@@ -12,18 +12,18 @@ import TagManagement from "./pages/TagManagement";
 
 const App: React.FC = () => {
   return (
-    <BrowserRouter>
     <SnackbarProvider maxSnack={4}>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/bookings" element={<Bookings />} />
-        <Route path="/gallery-management" element={<GalleryManagement />} />
-        <Route path="/room-management" element={<RoomManagement />} />
-        <Route path="/tag-management" element={<TagManagement />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      </SnackbarProvider>
-    </BrowserRouter>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/bookings" element={<Bookings />} />
+          <Route path="/gallery-management" element={<GalleryManagement />} />
+          <Route path="/room-management" element={<RoomManagement />} />
+          <Route path="/tag-management" element={<TagManagement />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </SnackbarProvider>
   );
 };
 
