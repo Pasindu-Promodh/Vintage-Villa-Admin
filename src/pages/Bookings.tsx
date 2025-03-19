@@ -44,7 +44,6 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import EmailIcon from "@mui/icons-material/Email";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { httpsCallable } from "firebase/functions";
-// import { functions } from "../onepirate/firebaseConfig";
 
 interface Booking {
   id: string;

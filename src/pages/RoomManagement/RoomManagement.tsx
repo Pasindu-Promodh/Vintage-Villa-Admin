@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { auth, db } from "../../config/firebaseConfig";
+import { db } from "../../config/firebaseConfig";
 import {
   collection,
   addDoc,
@@ -71,7 +71,7 @@ const defaultPricingSettings = {
 
 function RoomManagement() {
   // Auth state
-  const [user, setUser] = useState<any>(null);
+  // const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // Data state
@@ -94,18 +94,18 @@ function RoomManagement() {
 
   // Auth observer
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        fetchRooms();
-        fetchPricingSettings();
-      } else {
-        setUser(null);
-        window.location.href = "/admin";
-      }
-    });
+    // const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+    //   if (currentUser) {
+    //     setUser(currentUser);
+    fetchRooms();
+    fetchPricingSettings();
+    // } else {
+    //   setUser(null);
+    //   window.location.href = "/admin";
+    // }
+    // });
 
-    return () => unsubscribe();
+    // return () => unsubscribe();
   }, []);
 
   // Data fetching functions
@@ -158,7 +158,7 @@ function RoomManagement() {
 
     try {
       if (!formData.title || !formData.description || formData.price <= 0) {
-        showToast("Please fill in all required fields", 'error');
+        showToast("Please fill in all required fields", "error");
         return;
       }
 
@@ -173,13 +173,13 @@ function RoomManagement() {
         lastUpdated: Date.now(),
       });
 
-      showToast("Room added successfully!", 'success');
+      showToast("Room added successfully!", "success");
       setIsAddDialogOpen(false);
       resetForm();
       fetchRooms();
     } catch (err) {
       console.error("Error adding room:", err);
-      showToast("Failed to add room. Please try again.", 'error');
+      showToast("Failed to add room. Please try again.", "error");
     }
   };
 
@@ -190,7 +190,7 @@ function RoomManagement() {
 
     try {
       if (!formData.title || !formData.description || formData.price <= 0) {
-        showToast("Please fill in all required fields", 'error');
+        showToast("Please fill in all required fields", "error");
         return;
       }
 
@@ -199,12 +199,12 @@ function RoomManagement() {
         lastUpdated: Date.now(),
       });
 
-      showToast("Room updated successfully!", 'success');
+      showToast("Room updated successfully!", "success");
       setIsEditDialogOpen(false);
       fetchRooms();
     } catch (err) {
       console.error("Error updating room:", err);
-      showToast("Failed to update room. Please try again.", 'error');
+      showToast("Failed to update room. Please try again.", "error");
     }
   };
 
@@ -213,12 +213,12 @@ function RoomManagement() {
 
     try {
       await deleteDoc(doc(db, "rooms", roomId));
-      showToast("Room deleted successfully!", 'success');
+      showToast("Room deleted successfully!", "success");
       setIsDeleteDialogOpen(false);
       fetchRooms();
     } catch (err) {
       console.error("Error deleting room:", err);
-      showToast("Failed to delete room. Please try again.", 'error');
+      showToast("Failed to delete room. Please try again.", "error");
     }
   };
 
@@ -228,11 +228,14 @@ function RoomManagement() {
         isActive: !room.isActive,
         lastUpdated: Date.now(),
       });
-      showToast(`Room ${room.isActive ? "disabled" : "enabled"} successfully!`, 'success');
+      showToast(
+        `Room ${room.isActive ? "disabled" : "enabled"} successfully!`,
+        "success"
+      );
       fetchRooms();
     } catch (err) {
       console.error("Error toggling room status:", err);
-      showToast("Failed to update room status. Please try again.", 'error');
+      showToast("Failed to update room status. Please try again.", "error");
     }
   };
 
@@ -272,10 +275,10 @@ function RoomManagement() {
       ];
 
       setRooms(newRooms);
-      showToast("Room order updated!", 'success');
+      showToast("Room order updated!", "success");
     } catch (err) {
       console.error("Error updating room order:", err);
-      showToast("Failed to update room order. Please try again.", 'error');
+      showToast("Failed to update room order. Please try again.", "error");
     }
   };
 
@@ -290,10 +293,13 @@ function RoomManagement() {
       await setDoc(doc(db, "settings", "pricing"), updatedSettings);
       setPricingSettings(updatedSettings);
       setIsEditingPricing(false);
-      showToast("Pricing settings updated successfully!", 'success');
+      showToast("Pricing settings updated successfully!", "success");
     } catch (err) {
       console.error("Error updating pricing settings:", err);
-      showToast("Failed to update pricing settings. Please try again.", 'error');
+      showToast(
+        "Failed to update pricing settings. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -376,17 +382,20 @@ function RoomManagement() {
   };
 
   // Toast function using Snackbar
-  const showToast = (message: string, variant: 'success' | 'error' | 'warning' | 'info' = 'success') => {
+  const showToast = (
+    message: string,
+    variant: "success" | "error" | "warning" | "info" = "success"
+  ) => {
     enqueueSnackbar(message, { variant });
   };
 
-  if (!user) {
-    return (
-      <Typography variant="h5" sx={{ mt: 4, textAlign: "center" }}>
-        Redirecting to login...
-      </Typography>
-    );
-  }
+  // if (!user) {
+  //   return (
+  //     <Typography variant="h5" sx={{ mt: 4, textAlign: "center" }}>
+  //       Redirecting to login...
+  //     </Typography>
+  //   );
+  // }
 
   return (
     <Container>
