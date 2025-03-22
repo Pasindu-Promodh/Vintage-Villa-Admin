@@ -14,6 +14,8 @@ import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
 
 interface EditRoomDialogProps {
   open: boolean;
@@ -46,10 +48,13 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({
   onAmenitiesChange,
   onSubmit,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const amenitiesList = [
     "Wi-Fi",
     "Air Conditioning",
-    "Kitchen",
+    "Pantry",
     "TV",
     "Pool",
     "Parking",
@@ -75,10 +80,24 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({
   ];
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>Edit Room</DialogTitle>
-      <DialogContent>
-        <Grid container spacing={2} sx={{ mt: 1 }}>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="md" 
+      fullWidth
+      fullScreen={isMobile}
+      PaperProps={{
+        sx: {
+          m: isMobile ? 0 : 2,
+          width: isMobile ? '100%' : undefined,
+          maxHeight: isMobile ? '100%' : '90vh',
+          borderRadius: isMobile ? 0 : undefined
+        }
+      }}
+    >
+      <DialogTitle sx={{ px: isMobile ? 2 : 3 }}>Edit Room</DialogTitle>
+      <DialogContent sx={{ px: isMobile ? 2 : 3 }}>
+        <Grid container spacing={isMobile ? 1.5 : 2} sx={{ mt: 0.5 }}>
           <Grid item xs={12} sm={6}>
             <TextField
               name="title"
@@ -87,6 +106,7 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({
               onChange={onInputChange}
               fullWidth
               required
+              size={isMobile ? "small" : "medium"}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -97,40 +117,44 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({
               onChange={onInputChange}
               fullWidth
               placeholder="http://example.com/image.jpg"
+              size={isMobile ? "small" : "medium"}
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={6} sm={4}>
             <TextField
               name="price"
-              label="Price per Night ($)"
+              label="Price ($)"
               type="number"
               value={formData.price}
               onChange={onInputChange}
               fullWidth
               required
+              size={isMobile ? "small" : "medium"}
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={6} sm={4}>
             <TextField
               name="price_extra"
-              label="Price per Extra Guest ($)"
+              label="Extra Guest ($)"
               type="number"
               value={formData.price_extra}
               onChange={onInputChange}
               fullWidth
+              size={isMobile ? "small" : "medium"}
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={6} sm={4}>
             <TextField
               name="capacity"
-              label="Guest Capacity"
+              label="Capacity"
               type="number"
               value={formData.capacity}
               onChange={onInputChange}
               fullWidth
+              size={isMobile ? "small" : "medium"}
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={6} sm={4}>
             <TextField
               name="displayOrder"
               label="Display Order"
@@ -138,10 +162,11 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({
               value={formData.displayOrder}
               onChange={onInputChange}
               fullWidth
+              size={isMobile ? "small" : "medium"}
             />
           </Grid>
           <Grid item xs={12} sm={8}>
-            <FormControl fullWidth>
+            <FormControl fullWidth size={isMobile ? "small" : "medium"}>
               <InputLabel>Amenities</InputLabel>
               <Select
                 multiple
@@ -150,7 +175,7 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({
                 renderValue={(selected) => (
                   <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                     {(selected as string[]).map((value) => (
-                      <Chip key={value} label={value} />
+                      <Chip key={value} label={value} size={isMobile ? "small" : "medium"} />
                     ))}
                   </Box>
                 )}
@@ -171,8 +196,9 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({
               onChange={onInputChange}
               fullWidth
               multiline
-              rows={4}
+              rows={isMobile ? 12 : 10}
               required
+              size={isMobile ? "small" : "medium"}
             />
           </Grid>
           <Grid item xs={12}>
@@ -182,6 +208,7 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({
                   checked={formData.isActive}
                   onChange={onCheckboxChange}
                   name="isActive"
+                  size={isMobile ? "small" : "medium"}
                 />
               }
               label="Active (visible to customers)"
@@ -189,9 +216,14 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({
           </Grid>
         </Grid>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={onSubmit} variant="contained" color="primary">
+      <DialogActions sx={{ px: isMobile ? 2 : 3, pb: isMobile ? 2 : 1.5 }}>
+        <Button onClick={onClose} size={isMobile ? "small" : "medium"}>Cancel</Button>
+        <Button 
+          onClick={onSubmit} 
+          variant="contained" 
+          color="primary"
+          size={isMobile ? "small" : "medium"}
+        >
           Save Changes
         </Button>
       </DialogActions>

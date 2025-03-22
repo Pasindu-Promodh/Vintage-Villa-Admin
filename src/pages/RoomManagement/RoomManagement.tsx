@@ -17,6 +17,8 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import LinearProgress from "@mui/material/LinearProgress";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
 
 // Component imports
 import RoomList from "./components/RoomList";
@@ -70,8 +72,11 @@ const defaultPricingSettings = {
 };
 
 function RoomManagement() {
+  // Theme for responsive design
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   // Auth state
-  // const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // Data state
@@ -90,22 +95,11 @@ function RoomManagement() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditingPricing, setIsEditingPricing] = useState(false);
   const [error, setError] = useState("");
-  // const [success, setSuccess] = useState("");
 
   // Auth observer
   useEffect(() => {
-    // const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-    //   if (currentUser) {
-    //     setUser(currentUser);
     fetchRooms();
     fetchPricingSettings();
-    // } else {
-    //   setUser(null);
-    //   window.location.href = "/admin";
-    // }
-    // });
-
-    // return () => unsubscribe();
   }, []);
 
   // Data fetching functions
@@ -154,8 +148,6 @@ function RoomManagement() {
 
   // Room CRUD operations
   const handleAddRoom = async () => {
-    // clearMessages();
-
     try {
       if (!formData.title || !formData.description || formData.price <= 0) {
         showToast("Please fill in all required fields", "error");
@@ -184,8 +176,6 @@ function RoomManagement() {
   };
 
   const handleUpdateRoom = async () => {
-    // clearMessages();
-
     if (!roomToEdit) return;
 
     try {
@@ -209,8 +199,6 @@ function RoomManagement() {
   };
 
   const handleDeleteRoom = async (roomId: string) => {
-    // clearMessages();
-
     try {
       await deleteDoc(doc(db, "rooms", roomId));
       showToast("Room deleted successfully!", "success");
@@ -322,13 +310,7 @@ function RoomManagement() {
 
   const resetForm = () => {
     setFormData({ ...defaultFormData });
-    // clearMessages();
   };
-
-  // const clearMessages = () => {
-  //   setError("");
-  //   setSuccess("");
-  // };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -389,35 +371,38 @@ function RoomManagement() {
     enqueueSnackbar(message, { variant });
   };
 
-  // if (!user) {
-  //   return (
-  //     <Typography variant="h5" sx={{ mt: 4, textAlign: "center" }}>
-  //       Redirecting to login...
-  //     </Typography>
-  //   );
-  // }
-
   return (
-    <Container>
+    <Container 
+      maxWidth={false} 
+      disableGutters={isMobile}
+      sx={{
+        px: isMobile ? 1 : 2, 
+        width: "100%"
+      }}
+    >
       {/* Header */}
       <Box
         display="flex"
+        flexDirection={isMobile ? "column" : "row"}
         justifyContent="space-between"
-        alignItems="center"
+        alignItems={isMobile ? "flex-start" : "center"}
+        gap={isMobile ? 1 : 0}
         mb={2}
+        mt={1}
       >
-        <Typography variant="h4">Room Management</Typography>
+        <Typography variant={isMobile ? "h5" : "h4"}>Room Management</Typography>
         <Button
           variant="contained"
           color="primary"
+          fullWidth={isMobile}
           onClick={() => setIsAddDialogOpen(true)}
+          sx={{ mt: isMobile ? 1 : 0 }}
         >
           Add New Room
         </Button>
       </Box>
 
       {/* Alerts */}
-      {/* <AlertMessage message={success} type="success" /> */}
       <AlertMessage message={error} type="error" />
 
       {/* Loading indicator */}
@@ -436,8 +421,15 @@ function RoomManagement() {
       />
 
       {/* Room List */}
-      <Paper elevation={3} sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h5" mb={2}>
+      <Paper 
+        elevation={3} 
+        sx={{ 
+          p: isMobile ? 1 : 2, 
+          mb: 3,
+          borderRadius: isMobile ? 1 : 2
+        }}
+      >
+        <Typography variant="h5" mb={isMobile ? 1 : 2}>
           Room Listings ({rooms.length})
         </Typography>
 

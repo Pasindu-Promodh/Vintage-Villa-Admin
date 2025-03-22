@@ -19,16 +19,20 @@ import {
   CardActionArea,
   Avatar,
   Divider,
+  useMediaQuery,
 } from "@mui/material";
 import EventIcon from "@mui/icons-material/Event";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
 import LogoutIcon from "@mui/icons-material/Logout";
+import { useTheme } from "@mui/material/styles";
 
 function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [user, setUser] = useState<any>(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   useEffect(() => {
     // Set up an auth state observer that persists across page navigation
@@ -79,21 +83,21 @@ function Home() {
   const navigationTiles = [
     {
       title: "Bookings",
-      icon: <EventIcon sx={{ fontSize: 40 }} />,
+      icon: <EventIcon sx={{ fontSize: isMobile ? 30 : 40 }} />,
       color: "#4caf50",
       path: "bookings",
       description: "Manage customer reservations and availability"
     },
     {
       title: "Gallery Management",
-      icon: <PhotoLibraryIcon sx={{ fontSize: 40 }} />,
+      icon: <PhotoLibraryIcon sx={{ fontSize: isMobile ? 30 : 40 }} />,
       color: "#2196f3",
       path: "gallery-management",
       description: "Upload and organize property photos"
     },
     {
       title: "Room Management",
-      icon: <MeetingRoomIcon sx={{ fontSize: 40 }} />,
+      icon: <MeetingRoomIcon sx={{ fontSize: isMobile ? 30 : 40 }} />,
       color: "#ff9800",
       path: "room-management",
       description: "Manage room details, pricing and amenities"
@@ -101,47 +105,76 @@ function Home() {
   ];
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="lg" sx={{ px: isMobile ? 2 : 3 }}>
       {user ? (
-        <Box sx={{ mt: 4 }}>
+        <Box sx={{ mt: isMobile ? 2 : 4 }}>
           <Box
             display="flex"
-            justifyContent="space-between"
+            flexDirection="column"
             alignItems="center"
-            mb={4}
+            mb={isMobile ? 2 : 4}
           >
-            <Typography variant="h4" component="h1">
+            <Typography 
+              variant={isMobile ? "h5" : "h4"} 
+              component="h1"
+              align="center"
+              sx={{ mb: 2 }}
+            >
               Admin Dashboard
             </Typography>
-            <Box display="flex" alignItems="center">
-              <Box mr={2}>
-                <Avatar src={user.photoURL || undefined} alt={user.displayName || user.email}>
+            
+            <Box 
+              display="flex" 
+              flexDirection={isMobile ? "column" : "row"}
+              alignItems="center" 
+              width="100%"
+              justifyContent="center"
+            >
+              <Box 
+                display="flex" 
+                alignItems="center" 
+                mb={isMobile ? 1 : 0}
+              >
+                <Avatar 
+                  src={user.photoURL || undefined} 
+                  alt={user.displayName || user.email}
+                  sx={{ mr: 1 }}
+                >
                   {user.displayName ? user.displayName[0] : user.email[0]}
                 </Avatar>
-              </Box>
-              <Box>
-                <Typography variant="body1" fontWeight="bold">
+                <Typography 
+                  variant="body2" 
+                  fontWeight="medium"
+                  sx={{ 
+                    maxWidth: isMobile ? "180px" : "auto",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap"
+                  }}
+                >
                   {user.displayName || user.email}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {user.email}
-                </Typography>
               </Box>
+              
               <Button 
                 onClick={logout} 
                 variant="outlined" 
                 color="secondary" 
+                size={isMobile ? "small" : "medium"}
                 startIcon={<LogoutIcon />} 
-                sx={{ ml: 2 }}
+                sx={{ 
+                  ml: isMobile ? 0 : 2,
+                  mt: isMobile ? 1 : 0
+                }}
               >
                 Logout
               </Button>
             </Box>
           </Box>
           
-          <Divider sx={{ mb: 4 }} />
+          <Divider sx={{ mb: isMobile ? 2 : 4 }} />
 
-          <Grid container spacing={3}>
+          <Grid container spacing={isMobile ? 2 : 3}>
             {navigationTiles.map((tile) => (
               <Grid item xs={12} sm={6} md={4} key={tile.path}>
                 <Card 
@@ -163,15 +196,15 @@ function Home() {
                       display: "flex", 
                       flexDirection: "column", 
                       alignItems: "center", 
-                      p: 3 
+                      p: isMobile ? 2 : 3
                     }}
                   >
                     <Box 
                       sx={{ 
                         backgroundColor: tile.color, 
                         borderRadius: "50%", 
-                        width: 80, 
-                        height: 80, 
+                        width: isMobile ? 60 : 80, 
+                        height: isMobile ? 60 : 80, 
                         display: "flex", 
                         justifyContent: "center", 
                         alignItems: "center",
@@ -181,11 +214,20 @@ function Home() {
                     >
                       {tile.icon}
                     </Box>
-                    <CardContent sx={{ textAlign: "center", p: 1 }}>
-                      <Typography variant="h5" component="h2" gutterBottom>
+                    <CardContent sx={{ textAlign: "center", p: isMobile ? 0 : 1, width: "100%" }}>
+                      <Typography variant={isMobile ? "h6" : "h5"} component="h2" gutterBottom>
                         {tile.title}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary"
+                        sx={{ 
+                          display: "-webkit-box",
+                          overflow: "hidden",
+                          WebkitBoxOrient: "vertical",
+                          WebkitLineClamp: 2
+                        }}
+                      >
                         {tile.description}
                       </Typography>
                     </CardContent>
@@ -200,19 +242,19 @@ function Home() {
           <Paper 
             elevation={3} 
             sx={{ 
-              p: 4, 
+              p: isMobile ? 3 : 4, 
               width: "100%", 
-              maxWidth: 400,
+              maxWidth: isMobile ? 340 : 400,
               borderRadius: 2,
               boxShadow: "0 8px 16px rgba(0,0,0,0.1)"
             }}
           >
             <Box sx={{ textAlign: "center", mb: 3 }}>
-              <Typography variant="h4" component="h1" gutterBottom>
+              <Typography variant={isMobile ? "h5" : "h4"} component="h1" gutterBottom>
                 Admin Login
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Enter your credentials to access the admin dashboard
+                Enter your credentials to access the dashboard
               </Typography>
             </Box>
             
@@ -227,6 +269,7 @@ function Home() {
                 required
                 autoComplete="email"
                 autoFocus
+                size={isMobile ? "small" : "medium"}
               />
               <TextField
                 label="Password"
@@ -238,6 +281,7 @@ function Home() {
                 variant="outlined"
                 required
                 autoComplete="current-password"
+                size={isMobile ? "small" : "medium"}
               />
               <Button 
                 onClick={login} 
@@ -246,7 +290,7 @@ function Home() {
                 sx={{ 
                   mt: 3, 
                   mb: 2,
-                  py: 1.5,
+                  py: isMobile ? 1 : 1.5,
                   backgroundColor: "#1976d2",
                   "&:hover": {
                     backgroundColor: "#1565c0"
@@ -255,7 +299,7 @@ function Home() {
               >
                 Login
               </Button>
-              <Divider sx={{ my: 3 }}>
+              <Divider sx={{ my: 2 }}>
                 <Typography variant="body2" color="text.secondary">
                   OR
                 </Typography>
@@ -266,7 +310,7 @@ function Home() {
                 color="primary"
                 fullWidth
                 sx={{ 
-                  py: 1.5,
+                  py: isMobile ? 1 : 1.5,
                   borderColor: "#4285F4",
                   color: "#4285F4",
                   "&:hover": {

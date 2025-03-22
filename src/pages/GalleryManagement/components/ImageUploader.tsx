@@ -17,6 +17,8 @@ import {
   Paper,
   Grid,
   IconButton,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import TagSelector from '../../../components/TagSelector';
@@ -53,6 +55,10 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
   const { updateTagUsageCounts } = useTags();
   const { enqueueSnackbar } = useSnackbar();
+  
+  // Add responsive design hooks
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Handle Image Selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -444,43 +450,84 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 2, mb: 3 }}>
-      <Typography variant="h5" mb={2}>
+    <Paper 
+      elevation={3} 
+      sx={{ 
+        p: isMobile ? 1 : 2,  // Reduced padding on mobile
+        mb: 3,
+        width: '100%',
+        boxSizing: 'border-box'
+      }}
+    >
+      <Typography variant="h5" mb={isMobile ? 1 : 2}>
         Upload Images
       </Typography>
-      <input
-        type="file"
-        multiple
-        onChange={handleFileChange}
-        style={{ marginBottom: 16 }}
-      />
+      <Box sx={{ 
+        width: '100%',
+        overflow: 'hidden',
+        '& input': {
+          width: '100%',
+          boxSizing: 'border-box'
+        }
+      }}>
+        <input
+          type="file"
+          multiple
+          onChange={handleFileChange}
+          style={{ marginBottom: isMobile ? 8 : 16 }}
+        />
+      </Box>
 
       {/* Selected Images Preview */}
       {images.length > 0 && (
-        <Box mt={2}>
+        <Box mt={isMobile ? 1 : 2}>
           <Typography variant="h6" mb={1}>
             Selected Images ({images.length})
           </Typography>
-          <List>
+          <List sx={{ p: 0 }}>
             {images.map(({ file, tags }, index) => (
-              <Paper key={index} elevation={2} sx={{ p: 2, mb: 2 }}>
-                <Grid container spacing={2} alignItems="center">
+              <Paper 
+                key={index} 
+                elevation={2} 
+                sx={{ 
+                  p: isMobile ? 1 : 2,
+                  mb: isMobile ? 1 : 2,
+                  width: '100%',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <Grid container spacing={isMobile ? 1 : 2} alignItems="center">
                   <Grid item xs={12} sm={3}>
-                    <img
-                      src={imagePreviews[index]}
-                      alt=""
-                      style={{ maxWidth: "100%", maxHeight: 150 }}
-                    />
+                    <Box sx={{ 
+                      display: 'flex', 
+                      justifyContent: isMobile ? 'center' : 'flex-start'
+                    }}>
+                      <img
+                        src={imagePreviews[index]}
+                        alt=""
+                        style={{ 
+                          maxWidth: "100%", 
+                          maxHeight: 150,
+                          objectFit: 'contain'
+                        }}
+                      />
+                    </Box>
                   </Grid>
                   <Grid item xs={12} sm={9}>
-                    <Typography variant="subtitle1">
+                    <Typography 
+                      variant="subtitle1"
+                      sx={{
+                        wordBreak: 'break-word',
+                        overflowWrap: 'break-word'
+                      }}
+                    >
                       {file.name} ({formatFileSize(file.size)})
                     </Typography>
 
                     {/* Tags section */}
-                    <Box mt={1}>
+                    <Box mt={isMobile ? 0.5 : 1}>
                       <Typography variant="subtitle2">Tags:</Typography>
-                      <Box display="flex" flexWrap="wrap" gap={1} mb={1}>
+                      <Box display="flex" flexWrap="wrap" gap={0.5} mb={0.5}>
                         {tags.map((tag, tagIndex) => (
                           <Chip
                             key={tagIndex}
@@ -496,7 +543,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                       </Box>
 
                       {/* Add new tag */}
-                      <Box mt={1}>
+                      <Box mt={0.5}>
                         <TagSelector
                           selectedTags={images[index].tags}
                           onTagsChange={(newTags: string[]) => {
@@ -511,7 +558,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                     </Box>
 
                     {/* Remove image button */}
-                    <Box mt={1} display="flex" justifyContent="flex-end">
+                    <Box mt={0.5} display="flex" justifyContent="flex-end">
                       <IconButton
                         onClick={() => {
                           const newImages = [...images];
@@ -524,6 +571,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                           setImagePreviews(newPreviews);
                         }}
                         color="error"
+                        size={isMobile ? "small" : "medium"}
                       >
                         <DeleteIcon />
                       </IconButton>
@@ -539,20 +587,21 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       <Button
         onClick={uploadPhotos}
         variant="contained"
+        fullWidth={isMobile}
         disabled={uploading || images.length === 0}
-        sx={{ mt: 2 }}
+        sx={{ mt: isMobile ? 1 : 2 }}
       >
         {uploading ? "Uploading..." : "Upload Photos"}
       </Button>
 
       {/* Conversion Progress */}
       {converting && (
-        <Box mt={2}>
-          <Typography variant="body1" mb={1}>
+        <Box mt={isMobile ? 1 : 2}>
+          <Typography variant="body1" mb={0.5}>
             Converting images to WebP format...
           </Typography>
           <LinearProgress variant="determinate" value={conversionProgress} />
-          <Typography variant="body2" mt={1}>
+          <Typography variant="body2" mt={0.5}>
             {`Converting: ${convertedCount} / ${totalToConvert} (${conversionProgress}%)`}
           </Typography>
         </Box>
@@ -560,9 +609,9 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
       {/* Upload Progress */}
       {uploading && (
-        <Box mt={2}>
+        <Box mt={isMobile ? 1 : 2}>
           <LinearProgress variant="determinate" value={uploadProgress} />
-          <Typography variant="body2" mt={1}>
+          <Typography variant="body2" mt={0.5}>
             {`Uploading: ${formatFileSize(uploadedSize)} / ${formatFileSize(
               totalSize
             )} (${uploadProgress}%)`}

@@ -36,7 +36,7 @@ import {
   query,
   orderBy,
 } from "firebase/firestore";
-import { db, functions } from "../config/firebaseConfig";
+import { db, functions } from "../../config/firebaseConfig";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -51,6 +51,7 @@ import TableChartIcon from "@mui/icons-material/TableChart";
 import { parse, startOfWeek, getDay, format } from "date-fns";
 import { enUS } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import { useMediaQuery, useTheme } from "@mui/material";
 
 interface Booking {
   id: string;
@@ -73,6 +74,9 @@ interface Booking {
 }
 
 const Bookings: React.FC = () => {
+  const theme = useTheme();
+const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1006,6 +1010,680 @@ const Bookings: React.FC = () => {
       </Dialog>
     </Container>
   );
+
+
+  // return (
+  //   <Container 
+  //     maxWidth="lg" 
+  //     sx={{ 
+  //       mt: 4, 
+  //       mb: 4,
+  //       px: isMobile ? 1 : 3 // Reduce padding on mobile
+  //     }}
+  //   >
+  //     <Typography variant="h4" gutterBottom>
+  //       Booking Management
+  //     </Typography>
+  
+  //     {/* Filter and Search */}
+  //     <Paper sx={{ p: isMobile ? 1 : 2, mb: 3 }}>
+  //       <Grid container spacing={isMobile ? 1 : 2} alignItems="center">
+  //         <Grid item xs={12} sm={6} md={3}>
+  //           <TextField
+  //             select
+  //             label="Status"
+  //             value={statusFilter}
+  //             onChange={(e) => setStatusFilter(e.target.value)}
+  //             fullWidth
+  //             size="small"
+  //           >
+  //             <MenuItem value="all">All</MenuItem>
+  //             <MenuItem value="pending">Pending</MenuItem>
+  //             <MenuItem value="confirmed">Confirmed</MenuItem>
+  //             <MenuItem value="cancelled">Cancelled</MenuItem>
+  //             <MenuItem value="completed">Completed</MenuItem>
+  //           </TextField>
+  //         </Grid>
+  //         <Grid item xs={12} sm={6} md={3}>
+  //           <TextField
+  //             label="Search"
+  //             value={searchQuery}
+  //             onChange={(e) => setSearchQuery(e.target.value)}
+  //             placeholder={isMobile ? "Search..." : "Name, Email, Room, ID"}
+  //             fullWidth
+  //             size="small"
+  //           />
+  //         </Grid>
+  //         <Grid item xs={12} md={4}>
+  //           <LocalizationProvider dateAdapter={AdapterDateFns}>
+  //             <DateRangePicker
+  //               value={dateFilter}
+  //               onChange={(newValue) => setDateFilter(newValue)}
+  //               slots={{
+  //                 field: (fieldProps) => (
+  //                   <Box sx={{ display: "flex", alignItems: "center" }}>
+  //                     <TextField
+  //                       {...fieldProps.startProps}
+  //                       size="small"
+  //                       label="From"
+  //                       sx={{ width: "48%" }}
+  //                     />
+  //                     <Box component="span" sx={{ mx: 1 }}>
+  //                       to
+  //                     </Box>
+  //                     <TextField
+  //                       {...fieldProps.endProps}
+  //                       size="small"
+  //                       label="To"
+  //                       sx={{ width: "48%" }}
+  //                     />
+  //                   </Box>
+  //                 ),
+  //               }}
+  //             />
+  //           </LocalizationProvider>
+  //         </Grid>
+  //         <Grid
+  //           item
+  //           xs={12}
+  //           md={2}
+  //           sx={{ display: "flex", justifyContent: isMobile ? "center" : "flex-end" }}
+  //         >
+  //           <Tooltip title="Toggle Calendar View">
+  //             <IconButton
+  //               color={calendarView ? "primary" : "default"}
+  //               onClick={() => setisCalendar(!isCalendar)}
+  //             >
+  //               {isCalendar ? <TableChartIcon /> : <CalendarTodayIcon />}
+  //             </IconButton>
+  //           </Tooltip>
+  //           <Tooltip title="Refresh Bookings">
+  //             <IconButton color="primary" onClick={fetchBookings}>
+  //               <RefreshIcon />
+  //             </IconButton>
+  //           </Tooltip>
+  //         </Grid>
+  //       </Grid>
+  //     </Paper>
+  
+  //     {/* Error message */}
+  //     {error && (
+  //       <Alert severity="error" sx={{ mb: 2 }}>
+  //         {error}
+  //       </Alert>
+  //     )}
+  
+  //     {!isCalendar ? (
+  //       <Paper sx={{ width: "100%", overflow: "hidden" }}>
+  //         <TableContainer sx={{ maxHeight: 600 }}>
+  //           {loading ? (
+  //             <Box
+  //               sx={{
+  //                 display: "flex",
+  //                 justifyContent: "center",
+  //                 alignItems: "center",
+  //                 height: 400,
+  //               }}
+  //             >
+  //               <CircularProgress />
+  //             </Box>
+  //           ) : filteredBookings.length === 0 ? (
+  //             <Box
+  //               sx={{
+  //                 display: "flex",
+  //                 justifyContent: "center",
+  //                 alignItems: "center",
+  //                 height: 200,
+  //               }}
+  //             >
+  //               <Typography variant="h6" color="textSecondary">
+  //                 No bookings found
+  //               </Typography>
+  //             </Box>
+  //           ) : (
+  //             <Table stickyHeader size={isMobile ? "small" : "medium"}>
+  //               <TableHead>
+  //                 <TableRow>
+  //                   {!isMobile && <TableCell>Booking ID</TableCell>}
+  //                   <TableCell>Room</TableCell>
+  //                   {!isMobile && <TableCell>Customer</TableCell>}
+  //                   <TableCell>Check-in</TableCell>
+  //                   <TableCell>Status</TableCell>
+  //                   <TableCell>Actions</TableCell>
+  //                 </TableRow>
+  //               </TableHead>
+  //               <TableBody>
+  //                 {filteredBookings.map((booking) => (
+  //                   <TableRow key={booking.id} hover>
+  //                     {!isMobile && <TableCell>{booking.id.substring(0, 8)}...</TableCell>}
+  //                     <TableCell>{booking.roomTitle}</TableCell>
+  //                     {!isMobile && (
+  //                       <TableCell>
+  //                         <Tooltip title={booking.customerEmail}>
+  //                           <Typography variant="body2">
+  //                             {booking.customerName}
+  //                           </Typography>
+  //                         </Tooltip>
+  //                       </TableCell>
+  //                     )}
+  //                     <TableCell>{formatDate(booking.checkInDate)}</TableCell>
+  //                     <TableCell>
+  //                       <Chip
+  //                         label={booking.status}
+  //                         color={getStatusColor(booking.status) as any}
+  //                         size="small"
+  //                       />
+  //                     </TableCell>
+  //                     <TableCell>
+  //                       <Box sx={{ display: "flex", flexWrap: "nowrap" }}>
+  //                         <Tooltip title="View Details">
+  //                           <IconButton
+  //                             size="small"
+  //                             onClick={() => handleViewDetails(booking)}
+  //                           >
+  //                             <VisibilityIcon fontSize="small" />
+  //                           </IconButton>
+  //                         </Tooltip>
+  //                         <Tooltip title="Edit">
+  //                           <IconButton
+  //                             size="small"
+  //                             color="primary"
+  //                             onClick={() => handleEditBooking(booking)}
+  //                           >
+  //                             <EditIcon fontSize="small" />
+  //                           </IconButton>
+  //                         </Tooltip>
+  //                         {!isMobile && (
+  //                           <>
+  //                             <Tooltip title="Delete">
+  //                               <IconButton
+  //                                 size="small"
+  //                                 color="error"
+  //                                 onClick={() => handleDeleteBooking(booking)}
+  //                               >
+  //                                 <DeleteIcon fontSize="small" />
+  //                               </IconButton>
+  //                             </Tooltip>
+  //                             <Tooltip title="WhatsApp">
+  //                               <IconButton
+  //                                 size="small"
+  //                                 color="success"
+  //                                 onClick={() => sendWhatsApp(booking)}
+  //                                 disabled={!booking.customerPhone}
+  //                               >
+  //                                 <WhatsAppIcon fontSize="small" />
+  //                               </IconButton>
+  //                             </Tooltip>
+  //                             <Tooltip title="Email">
+  //                               <IconButton
+  //                                 size="small"
+  //                                 color="info"
+  //                                 onClick={() => sendEmail(booking)}
+  //                               >
+  //                                 <EmailIcon fontSize="small" />
+  //                               </IconButton>
+  //                             </Tooltip>
+  //                           </>
+  //                         )}
+  //                       </Box>
+  //                     </TableCell>
+  //                   </TableRow>
+  //                 ))}
+  //               </TableBody>
+  //             </Table>
+  //           )}
+  //         </TableContainer>
+  //       </Paper>
+  //     ) : (
+  //       <Paper sx={{ height: 600, p: isMobile ? 1 : 2 }}>
+  //         <Calendar
+  //           localizer={localizer}
+  //           events={formatCalendarData(filteredBookings)}
+  //           startAccessor="start"
+  //           endAccessor="end"
+  //           style={{ height: "100%" }}
+  //           views={isMobile ? [Views.AGENDA, Views.DAY] : [Views.AGENDA, Views.MONTH, Views.WEEK, Views.DAY]}
+  //           date={calendarDate}
+  //           onNavigate={handleNavigate}
+  //           view={calendarView}
+  //           onView={handleViewChange}
+  //           tooltipAccessor={(event) =>
+  //             `${event.title}\nStatus: ${event.resource.status}`
+  //           }
+  //           onSelectEvent={handleEventSelect}
+  //           eventPropGetter={(event) => ({
+  //             style: {
+  //               backgroundColor: event.backgroundColor,
+  //             },
+  //           })}
+  //         />
+  //       </Paper>
+  //     )}
+  
+  //     {/* Edit Booking Dialog */}
+  //     <Dialog
+  //       open={editOpen}
+  //       onClose={() => setEditOpen(false)}
+  //       maxWidth="sm"
+  //       fullWidth
+  //     >
+  //       {/* Content remains the same */}
+  //     </Dialog>
+  
+  //     {/* Confirm Delete Dialog */}
+  //     <Dialog
+  //       open={confirmDeleteOpen}
+  //       onClose={() => setConfirmDeleteOpen(false)}
+  //     >
+  //       {/* Content remains the same */}
+  //     </Dialog>
+      
+  //     {/* Email Confirmation Dialog */}
+  //     <Dialog
+  //       open={confirmEmailOpen}
+  //       onClose={handleCancelEmail}
+  //       maxWidth="sm"
+  //       fullWidth
+  //     >
+  //       {/* Content remains the same */}
+  //     </Dialog>
+  //   </Container>
+  // );
+
 };
 
 export default Bookings;
+
+// import React, { useState, useEffect } from "react";
+// import {
+//   Container,
+//   Typography,
+//   Box,
+//   Alert,
+//   CircularProgress,
+// } from "@mui/material";
+// import {
+//   collection,
+//   getDocs,
+//   doc,
+//   updateDoc,
+//   deleteDoc,
+//   query,
+//   orderBy,
+// } from "firebase/firestore";
+// import { db, functions } from "../../config/firebaseConfig";
+// import { View, Views } from "react-big-calendar";
+// import "react-big-calendar/lib/css/react-big-calendar.css";
+
+// // Import custom components
+// import BookingFilters from "./components/BookingFilters";
+// import BookingTable from "./components/BookingTable";
+// import BookingCalendar from "./components/BookingCalendar";
+// import BookingDialogs from "./components/BookingDialogs";
+// import { httpsCallable } from "firebase/functions";
+
+// interface Booking {
+//   id: string;
+//   roomTitle: string;
+//   checkInDate: string;
+//   checkOutDate: string;
+//   headCount: number;
+//   customerName: string;
+//   customerEmail: string;
+//   customerPhone: string;
+//   mealOptions: {
+//     breakfast: boolean;
+//     lunch: boolean;
+//     dinner: boolean;
+//   };
+//   discount: number;
+//   totalPrice: number;
+//   status: "pending" | "confirmed" | "cancelled" | "completed";
+//   createdAt: any;
+// }
+
+// const Bookings: React.FC = () => {
+//   // State for bookings data
+//   const [bookings, setBookings] = useState<Booking[]>([]);
+//   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState("");
+
+//   // State for selected booking and dialog controls
+//   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+//   const [detailsOpen, setDetailsOpen] = useState(false);
+//   const [editOpen, setEditOpen] = useState(false);
+//   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+//   const [confirmEmailOpen, setConfirmEmailOpen] = useState(false);
+//   const [emailConfirmationPending, setEmailConfirmationPending] =
+//     useState(false);
+//   const [emailMessage, setEmailMessage] = useState("");
+
+//   // State for filter controls
+//   const [statusFilter, setStatusFilter] = useState("all");
+//   const [searchQuery, setSearchQuery] = useState("");
+//   const [dateFilter, setDateFilter] = useState<[Date | null, Date | null]>([
+//     null,
+//     null,
+//   ]);
+
+//   // State for view toggle and calendar
+//   const [isCalendar, setIsCalendar] = useState(false);
+//   const [calendarDate, setCalendarDate] = useState(new Date());
+//   const [calendarView, setCalendarView] = useState<View>(Views.MONTH);
+
+//   // Form state for editing
+//   const [editForm, setEditForm] = useState<Partial<Booking>>({});
+
+//   // Fetch bookings from Firestore
+//   const fetchBookings = async () => {
+//     setLoading(true);
+//     setError("");
+//     try {
+//       const bookingsCollection = collection(db, "bookings");
+//       const bookingsQuery = query(
+//         bookingsCollection,
+//         orderBy("createdAt", "desc")
+//       );
+//       const snapshot = await getDocs(bookingsQuery);
+
+//       const bookingsList: Booking[] = snapshot.docs.map((doc) => ({
+//         id: doc.id,
+//         ...doc.data(),
+//       })) as Booking[];
+
+//       setBookings(bookingsList);
+//       setFilteredBookings(bookingsList);
+//     } catch (err) {
+//       console.error("Error fetching bookings:", err);
+//       setError("Failed to load bookings. Please try again.");
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   // Initial data fetch
+//   useEffect(() => {
+//     fetchBookings();
+//   }, []);
+
+//   // Apply filters when filter state changes
+//   useEffect(() => {
+//     let result = [...bookings];
+
+//     // Filter by status
+//     if (statusFilter !== "all") {
+//       result = result.filter((booking) => booking.status === statusFilter);
+//     }
+
+//     // Filter by search query (name, email, room)
+//     if (searchQuery) {
+//       const query = searchQuery.toLowerCase();
+//       result = result.filter(
+//         (booking) =>
+//           booking.customerName.toLowerCase().includes(query) ||
+//           booking.customerEmail.toLowerCase().includes(query) ||
+//           booking.roomTitle.toLowerCase().includes(query) ||
+//           booking.id.toLowerCase().includes(query)
+//       );
+//     }
+
+//     // Filter by date range
+//     if (dateFilter[0] && dateFilter[1]) {
+//       const startDate = dateFilter[0];
+//       const endDate = dateFilter[1];
+
+//       result = result.filter((booking) => {
+//         const checkIn = new Date(booking.checkInDate);
+//         const checkOut = new Date(booking.checkOutDate);
+
+//         return (
+//           (checkIn >= startDate && checkIn <= endDate) ||
+//           (checkOut >= startDate && checkOut <= endDate) ||
+//           (checkIn <= startDate && checkOut >= endDate)
+//         );
+//       });
+//     }
+
+//     setFilteredBookings(result);
+//   }, [bookings, statusFilter, searchQuery, dateFilter]);
+
+//   // Handlers for booking operations
+//   const handleViewDetails = (booking: Booking) => {
+//     setSelectedBooking(booking);
+//     setDetailsOpen(true);
+//   };
+
+//   const handleEditBooking = (booking: Booking) => {
+//     setSelectedBooking(booking);
+//     setEditForm({
+//       status: booking.status,
+//       customerName: booking.customerName,
+//       customerEmail: booking.customerEmail,
+//       customerPhone: booking.customerPhone,
+//       headCount: booking.headCount,
+//       mealOptions: { ...booking.mealOptions },
+//     });
+//     setEditOpen(true);
+//   };
+
+//   const handleSaveEdit = async () => {
+//     if (!selectedBooking) return;
+
+//     try {
+//       const bookingRef = doc(db, "bookings", selectedBooking.id);
+//       await updateDoc(bookingRef, editForm);
+
+//       // Update local state
+//       setBookings((prevBookings) =>
+//         prevBookings.map((booking) =>
+//           booking.id === selectedBooking.id
+//             ? { ...booking, ...editForm }
+//             : booking
+//         )
+//       );
+
+//       setEditOpen(false);
+
+//       // Handle email confirmation if needed
+//       const statusChanged = editForm.status !== selectedBooking.status;
+//       if (statusChanged && editForm.status) {
+//         setEmailConfirmationPending(true);
+//         setConfirmEmailOpen(true);
+//       }
+//     } catch (err) {
+//       console.error("Error updating booking:", err);
+//       setError("Failed to update booking. Please try again.");
+//     }
+//   };
+
+//   const handleDeleteBooking = (booking: Booking) => {
+//     setSelectedBooking(booking);
+//     setConfirmDeleteOpen(true);
+//   };
+
+//   const confirmDelete = async () => {
+//     if (!selectedBooking) return;
+
+//     try {
+//       await deleteDoc(doc(db, "bookings", selectedBooking.id));
+
+//       // Update local state
+//       setBookings((prevBookings) =>
+//         prevBookings.filter((booking) => booking.id !== selectedBooking.id)
+//       );
+
+//       setConfirmDeleteOpen(false);
+//     } catch (err) {
+//       console.error("Error deleting booking:", err);
+//       setError("Failed to delete booking. Please try again.");
+//     }
+//   };
+
+//   // Calendar event handlers
+//   const handleNavigate = (newDate: React.SetStateAction<Date>) => {
+//     setCalendarDate(newDate);
+//   };
+
+//   const handleViewChange = (newView: View) => {
+//     setCalendarView(newView);
+//   };
+
+//   // Filter handlers
+//   const handleStatusFilterChange = (value: string) => {
+//     setStatusFilter(value);
+//   };
+
+//   const handleSearchQueryChange = (value: string) => {
+//     setSearchQuery(value);
+//   };
+
+//   const handleDateFilterChange = (value: [Date | null, Date | null]) => {
+//     setDateFilter(value);
+//   };
+
+//   const handleToggleView = () => {
+//     setIsCalendar(!isCalendar);
+//   };
+
+//   // Send WhatsApp message
+//   const sendWhatsApp = (booking: Booking) => {
+//     const message = `
+//       *Regarding Your Booking*:
+//       Booking ID: ${booking.id}
+//       Room: ${booking.roomTitle}
+//       Check-in: ${new Date(booking.checkInDate).toLocaleDateString()}
+//       Check-out: ${new Date(booking.checkOutDate).toLocaleDateString()}
+//       Status: ${booking.status.toUpperCase()}
+
+//       Need assistance? Feel free to reply to this message.
+//     `;
+
+//     const whatsappURL = `https://wa.me/${booking.customerPhone.replace(
+//       /[^0-9]/g,
+//       ""
+//     )}?text=${encodeURIComponent(message)}`;
+
+//     window.open(whatsappURL, "_blank");
+//   };
+
+//   // Send email
+//   const sendEmail = async (booking: Booking) => {
+//     try {
+//       const sendCustomerEmail = httpsCallable(functions, "sendCustomerEmail");
+//       await sendCustomerEmail({
+//         bookingId: booking.id,
+//         subject: `Update on your booking #${booking.id}`,
+//         message: `
+//           <h2>Booking Information</h2>
+//           <p>Room: ${booking.roomTitle}</p>
+//           <p>Check-in: ${new Date(booking.checkInDate).toLocaleDateString()}</p>
+//           <p>Check-out: ${new Date(
+//             booking.checkOutDate
+//           ).toLocaleDateString()}</p>
+//           <p>Status: ${booking.status.toUpperCase()}</p>
+//           <p>If you have any questions, please reply to this email.</p>
+//         `,
+//       });
+//       alert("Email sent successfully!");
+//     } catch (err) {
+//       console.error("Error sending email:", err);
+//       alert("Failed to send email. Please try again.");
+//     }
+//   };
+
+//   return (
+//     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+//       <Typography variant="h4" gutterBottom>
+//         Booking Management
+//       </Typography>
+
+//       {/* Filters Component */}
+//       <BookingFilters
+//         statusFilter={statusFilter}
+//         setStatusFilter={handleStatusFilterChange}
+//         searchQuery={searchQuery}
+//         setSearchQuery={handleSearchQueryChange}
+//         dateFilter={dateFilter}
+//         setDateFilter={handleDateFilterChange}
+//         isCalendar={isCalendar}
+//         setIsCalendar={handleToggleView}
+//         refreshBookings={fetchBookings}
+//       />
+
+//       {/* Error message */}
+//       {error && (
+//         <Alert severity="error" sx={{ mb: 2 }}>
+//           {error}
+//         </Alert>
+//       )}
+
+//       {/* Loading state */}
+//       {loading ? (
+//         <Box
+//           sx={{
+//             display: "flex",
+//             justifyContent: "center",
+//             alignItems: "center",
+//             height: 400,
+//           }}
+//         >
+//           <CircularProgress />
+//         </Box>
+//       ) : (
+//         <>
+//           {/* Table or Calendar View */}
+//           {!isCalendar ? (
+//             <BookingTable
+//               loading={loading}
+//               bookings={filteredBookings}
+//               handleViewDetails={handleViewDetails}
+//               handleEditBooking={handleEditBooking}
+//               handleDeleteBooking={handleDeleteBooking}
+//               sendWhatsApp={sendWhatsApp}
+//               sendEmail={sendEmail}
+//             />
+//           ) : (
+//             <BookingCalendar
+//               bookings={filteredBookings}
+//               loading={loading}
+//               calendarDate={calendarDate}
+//               calendarView={calendarView}
+//               onNavigate={handleNavigate}
+//               onViewChange={handleViewChange}
+//               onSelectEvent={handleViewDetails}
+//             />
+//           )}
+//         </>
+//       )}
+
+//       {/* Dialogs Component */}
+//       <BookingDialogs
+//         // Details dialog
+//         detailsOpen={detailsOpen}
+//         selectedBooking={selectedBooking}
+//         setDetailsOpen={setDetailsOpen}
+//         // Edit dialog
+//         editOpen={editOpen}
+//         setEditOpen={setEditOpen}
+//         editForm={editForm}
+//         onEditBooking={handleEditBooking}
+//         setEditForm={setEditForm}
+//         onSaveEdit={handleSaveEdit}
+//         // Delete dialog
+//         confirmDeleteOpen={confirmDeleteOpen}
+//         setConfirmDeleteOpen={setConfirmDeleteOpen}
+//         onConfirmDelete={confirmDelete}
+//         // Email dialog
+//         confirmEmailOpen={confirmEmailOpen}
+//         emailConfirmationPending={emailConfirmationPending}
+//         emailMessage={emailMessage}
+//         setEmailMessage={setEmailMessage}
+//         setConfirmEmailOpen={setConfirmEmailOpen}
+//         setEmailConfirmationPending={setEmailConfirmationPending}
+//       />
+//     </Container>
+//   );
+// };
+
+// export default Bookings;
