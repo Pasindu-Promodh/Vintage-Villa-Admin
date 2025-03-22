@@ -29,7 +29,9 @@ interface EditRoomDialogProps {
     displayOrder: number;
   };
   onClose: () => void;
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onInputChange: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => void;
   onCheckboxChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onAmenitiesChange: (amenities: string[]) => void;
   onSubmit: () => void;
@@ -55,6 +57,21 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({
     "Heating",
     "Breakfast",
     "Pets Allowed",
+    "Bed linen",
+    "Towels",
+    "Shower cap",
+    "Paper napkins",
+    "Filtered water",
+    "Coffee (Nescafé)",
+    "Black tea bags",
+    "Green tea bags",
+    "Flavored tea bags",
+    "Sugar sachets",
+    "Snacks",
+    "Soap",
+    "Shampoo",
+    "Conditioner",
+    "Toilet paper",
   ];
 
   return (

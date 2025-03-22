@@ -140,6 +140,21 @@ const AddRoomDialog: React.FC<AddRoomDialogProps> = ({
                   "Heating",
                   "Breakfast",
                   "Pets Allowed",
+                  "Bed linen",
+                  "Towels",
+                  "Shower cap",
+                  "Paper napkins",
+                  "Filtered water",
+                  "Coffee (Nescafé)",
+                  "Black tea bags",
+                  "Green tea bags",
+                  "Flavored tea bags",
+                  "Sugar sachets",
+                  "Snacks",
+                  "Soap",
+                  "Shampoo",
+                  "Conditioner",
+                  "Toilet paper",
                 ].map((amenity) => (
                   <MenuItem key={amenity} value={amenity}>
                     {amenity}
