@@ -44,6 +44,13 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import EmailIcon from "@mui/icons-material/Email";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { httpsCallable } from "firebase/functions";
+import { Calendar, dateFnsLocalizer, View, Views } from "react-big-calendar";
+import "react-big-calendar/lib/css/react-big-calendar.css";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import TableChartIcon from "@mui/icons-material/TableChart";
+import { parse, startOfWeek, getDay, format } from "date-fns";
+import { enUS } from "date-fns/locale";
+import "react-big-calendar/lib/css/react-big-calendar.css";
 
 interface Booking {
   id: string;
@@ -84,6 +91,9 @@ const Bookings: React.FC = () => {
   const [emailConfirmationPending, setEmailConfirmationPending] =
     useState(false);
   const [emailMessage, setEmailMessage] = useState("");
+  const [calendarDate, setCalendarDate] = useState(new Date());
+  const [calendarView, setCalendarView] = useState<View>(Views.MONTH);
+  const [isCalendar, setisCalendar] = useState(false);
 
   // Form state for editing
   const [editForm, setEditForm] = useState<Partial<Booking>>({});
@@ -185,7 +195,7 @@ const Bookings: React.FC = () => {
     if (!selectedBooking) return;
 
     // Check if status has changed
-    const statusChanged = editForm.status !== selectedBooking.status;
+    // const statusChanged = editForm.status !== selectedBooking.status;
 
     try {
       const bookingRef = doc(db, "bookings", selectedBooking.id);
@@ -203,10 +213,10 @@ const Bookings: React.FC = () => {
       setEditOpen(false);
 
       // If status changed, show email confirmation dialog
-      if (statusChanged && editForm.status) {
-        setEmailConfirmationPending(true);
-        setConfirmEmailOpen(true);
-      }
+      // if (statusChanged && editForm.status) {
+      //   setEmailConfirmationPending(true);
+      //   setConfirmEmailOpen(true);
+      // }
     } catch (err) {
       console.error("Error updating booking:", err);
       setError("Failed to update booking. Please try again.");
@@ -346,6 +356,63 @@ const Bookings: React.FC = () => {
     setEmailMessage("");
   };
 
+  const formatCalendarData = (bookings: any[]) => {
+    return bookings.map((booking) => {
+      // Determine event color based on booking status
+      let backgroundColor = "#3788d8"; // default blue
+      switch (booking.status) {
+        case "confirmed":
+          backgroundColor = "#28a745"; // green
+          break;
+        case "pending":
+          backgroundColor = "#ffc107"; // yellow
+          break;
+        case "cancelled":
+          backgroundColor = "#dc3545"; // red
+          break;
+        case "completed":
+          backgroundColor = "#6c757d"; // gray
+          break;
+      }
+
+      return {
+        id: booking.id,
+        title: `${booking.roomTitle} - ${booking.customerName}`,
+        start: new Date(booking.checkInDate),
+        end: new Date(booking.checkOutDate),
+        resource: booking,
+        backgroundColor,
+      };
+    });
+  };
+
+  const locales = {
+    "en-US": enUS,
+  };
+
+  const localizer = dateFnsLocalizer({
+    format,
+    parse,
+    startOfWeek,
+    getDay,
+    locales,
+  });
+  const handleEventSelect = (event: { id: string }) => {
+    // Find the booking and show details
+    const booking = bookings.find((b) => b.id === event.id);
+    if (booking) {
+      handleViewDetails(booking);
+    }
+  };
+
+  const handleNavigate = (newDate: React.SetStateAction<Date>) => {
+    setCalendarDate(newDate);
+  };
+
+  const handleViewChange = (newView: View) => {
+    setCalendarView(newView);
+  };
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
@@ -381,34 +448,7 @@ const Bookings: React.FC = () => {
               size="small"
             />
           </Grid>
-          {/* <Grid item xs={12} md={5}>
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DateRangePicker
-                value={dateFilter}
-                onChange={(newValue) => setDateFilter(newValue)}
-                renderInput={(startProps, endProps) => (
-                  <>
-                    <TextField
-                      {...startProps}
-                      size="small"
-                      label="Date From"
-                      sx={{ width: "48%" }}
-                    />
-                    <Box component="span" sx={{ mx: 1 }}>
-                      to
-                    </Box>
-                    <TextField
-                      {...endProps}
-                      size="small"
-                      label="Date To"
-                      sx={{ width: "48%" }}
-                    />
-                  </>
-                )}
-              />
-            </LocalizationProvider>
-          </Grid> */}
-          <Grid item xs={12} md={5}>
+          <Grid item xs={12} md={4}>
             <LocalizationProvider dateAdapter={AdapterDateFns}>
               <DateRangePicker
                 value={dateFilter}
@@ -437,7 +477,19 @@ const Bookings: React.FC = () => {
               />
             </LocalizationProvider>
           </Grid>
-          <Grid item xs={12} md={1}>
+          <Grid
+            item
+            md={2}
+            sx={{ display: "flex", justifyContent: "flex-end" }}
+          >
+            <Tooltip title="Toggle Calendar View">
+              <IconButton
+                color={calendarView ? "primary" : "default"}
+                onClick={() => setisCalendar(!isCalendar)}
+              >
+                {isCalendar ? <TableChartIcon /> : <CalendarTodayIcon />}
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Refresh Bookings">
               <IconButton color="primary" onClick={fetchBookings}>
                 <RefreshIcon />
@@ -454,123 +506,148 @@ const Bookings: React.FC = () => {
         </Alert>
       )}
 
-      {/* Bookings Table */}
-      <Paper sx={{ width: "100%", overflow: "hidden" }}>
-        <TableContainer sx={{ maxHeight: 600 }}>
-          {loading ? (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: 400,
-              }}
-            >
-              <CircularProgress />
-            </Box>
-          ) : filteredBookings.length === 0 ? (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: 200,
-              }}
-            >
-              <Typography variant="h6" color="textSecondary">
-                No bookings found
-              </Typography>
-            </Box>
-          ) : (
-            <Table stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Booking ID</TableCell>
-                  <TableCell>Room</TableCell>
-                  <TableCell>Customer</TableCell>
-                  <TableCell>Check-in</TableCell>
-                  <TableCell>Check-out</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Price</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredBookings.map((booking) => (
-                  <TableRow key={booking.id} hover>
-                    <TableCell>{booking.id.substring(0, 8)}...</TableCell>
-                    <TableCell>{booking.roomTitle}</TableCell>
-                    <TableCell>
-                      <Tooltip title={booking.customerEmail}>
-                        <Typography variant="body2">
-                          {booking.customerName}
-                        </Typography>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell>{formatDate(booking.checkInDate)}</TableCell>
-                    <TableCell>{formatDate(booking.checkOutDate)}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={booking.status}
-                        color={getStatusColor(booking.status) as any}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>${booking.totalPrice.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Tooltip title="View Details">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleViewDetails(booking)}
-                        >
-                          <VisibilityIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Edit Booking">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => handleEditBooking(booking)}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete Booking">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDeleteBooking(booking)}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="WhatsApp">
-                        <IconButton
-                          size="small"
-                          color="success"
-                          onClick={() => sendWhatsApp(booking)}
-                          disabled={!booking.customerPhone}
-                        >
-                          <WhatsAppIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Email">
-                        <IconButton
-                          size="small"
-                          color="info"
-                          onClick={() => sendEmail(booking)}
-                        >
-                          <EmailIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
+      {!isCalendar ? (
+        <Paper sx={{ width: "100%", overflow: "hidden" }}>
+          <TableContainer sx={{ maxHeight: 600 }}>
+            {loading ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: 400,
+                }}
+              >
+                <CircularProgress />
+              </Box>
+            ) : filteredBookings.length === 0 ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: 200,
+                }}
+              >
+                <Typography variant="h6" color="textSecondary">
+                  No bookings found
+                </Typography>
+              </Box>
+            ) : (
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Booking ID</TableCell>
+                    <TableCell>Room</TableCell>
+                    <TableCell>Customer</TableCell>
+                    <TableCell>Check-in</TableCell>
+                    <TableCell>Check-out</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Price</TableCell>
+                    <TableCell>Actions</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </TableContainer>
-      </Paper>
+                </TableHead>
+                <TableBody>
+                  {filteredBookings.map((booking) => (
+                    <TableRow key={booking.id} hover>
+                      <TableCell>{booking.id.substring(0, 8)}...</TableCell>
+                      <TableCell>{booking.roomTitle}</TableCell>
+                      <TableCell>
+                        <Tooltip title={booking.customerEmail}>
+                          <Typography variant="body2">
+                            {booking.customerName}
+                          </Typography>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>{formatDate(booking.checkInDate)}</TableCell>
+                      <TableCell>{formatDate(booking.checkOutDate)}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={booking.status}
+                          color={getStatusColor(booking.status) as any}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>${booking.totalPrice.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Tooltip title="View Details">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleViewDetails(booking)}
+                          >
+                            <VisibilityIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Edit Booking">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => handleEditBooking(booking)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete Booking">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteBooking(booking)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="WhatsApp">
+                          <IconButton
+                            size="small"
+                            color="success"
+                            onClick={() => sendWhatsApp(booking)}
+                            disabled={!booking.customerPhone}
+                          >
+                            <WhatsAppIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Email">
+                          <IconButton
+                            size="small"
+                            color="info"
+                            onClick={() => sendEmail(booking)}
+                          >
+                            <EmailIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </TableContainer>
+        </Paper>
+      ) : (
+        <Paper sx={{ height: 600, p: 2 }}>
+          <Calendar
+            localizer={localizer}
+            events={formatCalendarData(filteredBookings)}
+            startAccessor="start"
+            endAccessor="end"
+            style={{ height: "100%" }}
+            views={[Views.AGENDA, Views.MONTH, Views.WEEK, Views.DAY]}
+            date={calendarDate}
+            onNavigate={handleNavigate}
+            view={calendarView}
+            onView={handleViewChange}
+            tooltipAccessor={(event) =>
+              `${event.title}\nStatus: ${event.resource.status}`
+            }
+            onSelectEvent={handleEventSelect}
+            eventPropGetter={(event) => ({
+              style: {
+                backgroundColor: event.backgroundColor,
+              },
+            })}
+          />
+        </Paper>
+      )}
 
       {/* View Details Dialog */}
       <Dialog
