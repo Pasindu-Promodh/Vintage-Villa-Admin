@@ -28,28 +28,7 @@ import DeleteConfirmationDialog from "./components/DeleteConfirmationDialog";
 import PricingSettingsCard from "./components/PricingSettingsCard";
 import AlertMessage from "./components/AlertMessage";
 import { enqueueSnackbar } from "notistack";
-
-// Interfaces
-interface Room {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  price_extra: number;
-  image: string;
-  isActive: boolean;
-  displayOrder: number;
-  capacity: number;
-  amenities: string[];
-  lastUpdated: number;
-}
-
-interface PricingSettings {
-  lunchPrice: number;
-  dinnerPrice: number;
-  discountRate: number;
-  lastUpdated: number;
-}
+import { PricingSettings, Room } from "../../components/Types";
 
 // Default values
 const defaultFormData = {

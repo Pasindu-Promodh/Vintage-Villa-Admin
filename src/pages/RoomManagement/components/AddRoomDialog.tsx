@@ -18,30 +18,31 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
+import { RoomDialogProps } from "../../../components/Types";
 
-interface AddRoomDialogProps {
-  open: boolean;
-  formData: {
-    title: string;
-    description: string;
-    price: number;
-    price_extra: number;
-    image: string;
-    isActive: boolean;
-    capacity: number;
-    amenities: string[];
-    displayOrder: number;
-  };
-  onClose: () => void;
-  onInputChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => void;
-  onCheckboxChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onAmenitiesChange: (amenities: string[]) => void;
-  onSubmit: () => void;
-}
+// interface AddRoomDialogProps {
+//   open: boolean;
+//   formData: {
+//     title: string;
+//     description: string;
+//     price: number;
+//     price_extra: number;
+//     image: string;
+//     isActive: boolean;
+//     capacity: number;
+//     amenities: string[];
+//     displayOrder: number;
+//   };
+//   onClose: () => void;
+//   onInputChange: (
+//     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+//   ) => void;
+//   onCheckboxChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+//   onAmenitiesChange: (amenities: string[]) => void;
+//   onSubmit: () => void;
+// }
 
-const AddRoomDialog: React.FC<AddRoomDialogProps> = ({
+const AddRoomDialog: React.FC<RoomDialogProps> = ({
   open,
   formData,
   onClose,

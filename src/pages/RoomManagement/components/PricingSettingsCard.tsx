@@ -11,13 +11,14 @@ import EditIcon from "@mui/icons-material/Edit";
 import SaveIcon from "@mui/icons-material/Save";
 import CancelIcon from "@mui/icons-material/Cancel";
 import InputAdornment from "@mui/material/InputAdornment";
+import { PricingSettings } from "../../../components/Types";
 
-interface PricingSettings {
-  lunchPrice: number;
-  dinnerPrice: number;
-  discountRate: number;
-  lastUpdated: number;
-}
+// interface PricingSettings {
+//   lunchPrice: number;
+//   dinnerPrice: number;
+//   discountRate: number;
+//   lastUpdated: number;
+// }
 
 interface PricingSettingsCardProps {
   pricingSettings: PricingSettings;

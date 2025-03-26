@@ -157,7 +157,7 @@ const ImageLibrary: React.FC<ImageLibraryProps> = ({
 
   // Copy image URL to clipboard
   const copyImageUrl = () => {
-    if (selectedPhoto) {
+    if (selectedPhoto?.imageUrl) {
       navigator.clipboard.writeText(selectedPhoto.imageUrl)
         .then(() => {
           setSnackbarMessage("Image URL copied to clipboard");
@@ -167,8 +167,12 @@ const ImageLibrary: React.FC<ImageLibraryProps> = ({
           setSnackbarMessage("Failed to copy URL: " + error.message);
           setSnackbarOpen(true);
         });
+    } else {
+      setSnackbarMessage("No image URL available");
+      setSnackbarOpen(true);
     }
   };
+  
 
   // Close snackbar
   const handleSnackbarClose = (_event?: React.SyntheticEvent | Event, reason?: string) => {

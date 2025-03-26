@@ -1,0 +1,1061 @@
+// React Core Imports
+import React, { useState, useEffect } from "react";
+
+// React Big Calendar Imports
+import { Calendar, dateFnsLocalizer, View, Views } from "react-big-calendar";
+import "react-big-calendar/lib/css/react-big-calendar.css";
+
+// Firebase Imports
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy,
+  addDoc,
+} from "firebase/firestore";
+import { db, functions } from "../../config/firebaseConfig";
+import { httpsCallable } from "firebase/functions";
+
+// Date Handling Imports
+import { parse, startOfWeek, getDay, format } from "date-fns";
+import { enGB } from "date-fns/locale";
+
+// Material-UI (MUI) Core Imports
+import {
+  Container,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Button,
+  Box,
+  TextField,
+  MenuItem,
+  Grid,
+  Chip,
+  IconButton,
+  Tooltip,
+  CircularProgress,
+  Alert,
+} from "@mui/material";
+
+// Material-UI Date Picker Imports
+import { DateRangePicker } from "@mui/x-date-pickers-pro/DateRangePicker";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFnsV3";
+
+// Material-UI Icon Imports
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import EmailIcon from "@mui/icons-material/Email";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import TableChartIcon from "@mui/icons-material/TableChart";
+import ClearIcon from "@mui/icons-material/Clear";
+import AddIcon from "@mui/icons-material/Add";
+
+// Local Component Imports
+import EditBookingDialog from "./components/Bookings/EditBookingDialog";
+import ViewBookingDialog from "./components/Bookings/ViewBookingDialog";
+import EditUnavailableDateDialog from "./components/Unavailable/EditUnavailableDialog";
+import ConfirmDeleteDialog from "./components/Bookings/ConfirmDeleteDialog";
+import EmailConfirmationDialog from "./components/Bookings/EmailConfirmationDialog";
+import UnavailableDatesDialog from "./components/Unavailable/AddUnavailableDialog";
+
+// Type Imports
+import { Booking, UnavailableDates } from "../../components/Types";
+import UnavailableDateDetailsDialog from "./components/Unavailable/ViewUnavailableDialog";
+
+const BookingManagement: React.FC = () => {
+  // Booking Management States
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+
+  // Form Editing States
+  const [editForm, setEditForm] = useState<Partial<Booking>>({});
+  const [editOpen, setEditOpen] = useState(false);
+
+  // Unavailable Dates States
+  const [unavailableDates, setUnavailableDates] = useState<UnavailableDates[]>(
+    []
+  );
+  const [filteredUnavailableDates, setFilteredUnavailableDates] = useState<
+    UnavailableDates[]
+  >([]);
+  const [selectedUnavailableDate, setSelectedUnavailableDate] =
+    useState<UnavailableDates | null>(null);
+  const [editUnavailableDateForm, setEditUnavailableDateForm] = useState<
+    Partial<UnavailableDates>
+  >({});
+  const [selectedUnavailableDateView, setSelectedUnavailableDateView] =
+    useState<UnavailableDates | null>(null);
+  const [unavailableDateDetailsOpen, setUnavailableDateDetailsOpen] =
+    useState(false);
+
+  // New Unavailable Date State
+  const [newUnavailableDate, setNewUnavailableDate] = useState<{
+    startDate: Date | null;
+    endDate: Date | null;
+    reason: string;
+  }>({
+    startDate: null,
+    endDate: null,
+    reason: "",
+  });
+
+  // Dialog and Modal States
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [addUnavailableDateOpen, setAddUnavailableDateOpen] = useState(false);
+  const [editUnavailableDateOpen, setEditUnavailableDateOpen] = useState(false);
+  const [confirmEmailOpen, setConfirmEmailOpen] = useState(false);
+
+  // Filter and Search States
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState<[Date | null, Date | null]>([
+    new Date(),
+    null,
+  ]);
+
+  // Calendar States
+  const [calendarDate, setCalendarDate] = useState(new Date());
+  const [calendarView, setCalendarView] = useState<View>(Views.MONTH);
+  const [isCalendar, setisCalendar] = useState(false);
+
+  // Email Confirmation States
+  const [emailConfirmationPending, setEmailConfirmationPending] =
+    useState(false);
+  const [emailMessage, setEmailMessage] = useState("");
+
+  // Loading and Error States
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchBookings();
+    fetchUnavailableDates();
+  }, []);
+
+  // Apply filters to bookings
+  useEffect(() => {
+    let result = [...bookings];
+
+    // Filter by status
+    if (statusFilter !== "all") {
+      result = result.filter((booking) => booking.status === statusFilter);
+    }
+
+    // Filter by search query (name, email, room)
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (booking) =>
+          booking.customerName.toLowerCase().includes(query) ||
+          booking.customerEmail.toLowerCase().includes(query) ||
+          booking.roomTitle.toLowerCase().includes(query) ||
+          booking.id.toLowerCase().includes(query)
+      );
+    }
+
+    // Filter by date range
+    if (dateFilter[0]) {
+      const startDate = dateFilter[0];
+      const endDate = dateFilter[1];
+
+      result = result.filter((booking) => {
+        const checkIn = new Date(booking.checkInDate);
+        const checkOut = new Date(booking.checkOutDate);
+
+        if (!endDate) {
+          return checkOut >= startDate;
+        }
+
+        return (
+          (checkIn >= startDate && checkIn <= endDate) ||
+          (checkOut >= startDate && checkOut <= endDate) ||
+          (checkIn <= startDate && checkOut >= endDate)
+        );
+      });
+    }
+
+    setFilteredBookings(result);
+  }, [bookings, statusFilter, searchQuery, dateFilter]);
+
+  useEffect(() => {
+    let result = [...unavailableDates];
+
+    // Filter by date range
+    if (dateFilter[0]) {
+      const startDate = dateFilter[0];
+      const endDate = dateFilter[1];
+
+      result = result.filter((unavailableDate) => {
+        const start = new Date(unavailableDate.startDate);
+        const end = new Date(unavailableDate.endDate);
+
+        if (!endDate) {
+          return end >= startDate;
+        }
+
+        return (
+          (start >= startDate && start <= endDate) ||
+          (end >= startDate && end <= endDate) ||
+          (start <= startDate && end >= endDate)
+        );
+      });
+    }
+
+    setFilteredUnavailableDates(result);
+  }, [unavailableDates, dateFilter]);
+
+  // Fetch Functions
+  const fetchBookings = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const bookingsCollection = collection(db, "bookings");
+      const bookingsQuery = query(
+        bookingsCollection,
+        orderBy("createdAt", "desc")
+      );
+      const snapshot = await getDocs(bookingsQuery);
+
+      const bookingsList: Booking[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Booking[];
+
+      setBookings(bookingsList);
+      setFilteredBookings(bookingsList);
+    } catch (err) {
+      console.error("Error fetching bookings:", err);
+      setError("Failed to load bookings. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUnavailableDates = async () => {
+    try {
+      const unavailableDatesCollection = collection(db, "unavailable_dates");
+      const snapshot = await getDocs(unavailableDatesCollection);
+
+      const datesList: UnavailableDates[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as UnavailableDates[];
+
+      setUnavailableDates(datesList);
+      setFilteredUnavailableDates(datesList);
+    } catch (err) {
+      console.error("Error fetching unavailable dates:", err);
+    }
+  };
+
+  // Booking View and Edit Functions
+  const handleViewBooking = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setDetailsOpen(true);
+  };
+
+  const handleEditBooking = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setEditForm({
+      ...booking, // Spread the entire booking object
+      checkInDate: booking.checkInDate, // Explicitly add date fields
+      checkOutDate: booking.checkOutDate,
+      createdAt: booking.createdAt,
+      discount: booking.discount,
+      totalPrice: booking.totalPrice,
+    });
+    setEditOpen(true);
+  };
+
+  const handleSaveBooking = async () => {
+    if (!selectedBooking) return;
+
+    // Check if status has changed
+    const statusChanged = editForm.status !== selectedBooking.status;
+
+    try {
+      const bookingRef = doc(db, "bookings", selectedBooking.id);
+      await updateDoc(bookingRef, editForm);
+
+      // Update local state
+      setBookings((prevBookings) =>
+        prevBookings.map((booking) =>
+          booking.id === selectedBooking.id
+            ? { ...booking, ...editForm }
+            : booking
+        )
+      );
+
+      setEditOpen(false);
+
+      // If status changed, send notification based on preferred contact method
+      if (statusChanged && editForm.status) {
+        const preferredMethod = editForm.preferredContactMethod || "whatsapp";
+
+        if (preferredMethod === "email") {
+          // Show email confirmation dialog
+          setEmailConfirmationPending(true);
+          setConfirmEmailOpen(true);
+        } else if (
+          preferredMethod === "whatsapp" &&
+          selectedBooking.customerPhone
+        ) {
+          // Send WhatsApp notification
+          sendStatusWhatsApp(selectedBooking, editForm.status);
+        }
+      }
+    } catch (err) {
+      console.error("Error updating booking:", err);
+      setError("Failed to update booking. Please try again.");
+    }
+  };
+
+  const handleDeleteBooking = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmDeleteBooking = async () => {
+    if (!selectedBooking) return;
+
+    try {
+      await deleteDoc(doc(db, "bookings", selectedBooking.id));
+
+      // Update local state
+      setBookings((prevBookings) =>
+        prevBookings.filter((booking) => booking.id !== selectedBooking.id)
+      );
+
+      setConfirmDeleteOpen(false);
+    } catch (err) {
+      console.error("Error deleting booking:", err);
+      setError("Failed to delete booking. Please try again.");
+    }
+  };
+
+  // Unavailable Dates Management Functions
+  const handleAddUnavailableDate = async () => {
+    if (!newUnavailableDate.startDate || !newUnavailableDate.endDate) return;
+
+    try {
+      const unavailableDatesCollection = collection(db, "unavailable_dates");
+      const newDateEntry = {
+        startDate: newUnavailableDate.startDate.toISOString(),
+        endDate: newUnavailableDate.endDate.toISOString(),
+        reason: newUnavailableDate.reason || "",
+        createdAt: new Date().toISOString(),
+      };
+
+      const docRef = await addDoc(unavailableDatesCollection, newDateEntry);
+
+      setUnavailableDates((prev) => [
+        ...prev,
+        {
+          id: docRef.id,
+          ...newDateEntry,
+        },
+      ]);
+
+      // Reset the dialog
+      setNewUnavailableDate({
+        startDate: null,
+        endDate: null,
+        reason: "",
+      });
+      setAddUnavailableDateOpen(false);
+    } catch (err) {
+      console.error("Error adding unavailable date:", err);
+      setError("Failed to add unavailable dates. Please try again.");
+    }
+  };
+
+  const handleEditUnavailableDate = (date: UnavailableDates) => {
+    setSelectedUnavailableDate(date);
+    setEditUnavailableDateForm({
+      startDate: date.startDate,
+      endDate: date.endDate,
+      reason: date.reason || "",
+    });
+    setEditUnavailableDateOpen(true);
+  };
+
+  const handleSaveUnavailableDate = async () => {
+    if (!selectedUnavailableDate) return;
+
+    try {
+      const docRef = doc(db, "unavailable_dates", selectedUnavailableDate.id);
+      await updateDoc(docRef, editUnavailableDateForm);
+
+      // Update local state
+      setUnavailableDates((prev) =>
+        prev.map((date) =>
+          date.id === selectedUnavailableDate.id
+            ? { ...date, ...editUnavailableDateForm }
+            : date
+        )
+      );
+
+      setEditUnavailableDateOpen(false);
+    } catch (err) {
+      console.error("Error updating unavailable date:", err);
+      setError("Failed to update unavailable date. Please try again.");
+    }
+  };
+
+  const handleDeleteUnavailableDate = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "unavailable_dates", id));
+      setUnavailableDates((prev) => prev.filter((date) => date.id !== id));
+    } catch (err) {
+      console.error("Error deleting unavailable date:", err);
+    }
+  };
+
+  const handleUnavailableDateSelect = (event: {
+    resource: UnavailableDates;
+  }) => {
+    if (event.resource) {
+      setSelectedUnavailableDateView(event.resource);
+      setUnavailableDateDetailsOpen(true);
+    }
+  };
+
+  // Communication Functions
+  const sendWhatsApp = (booking: Booking) => {
+    const message = `
+    *Regarding Your Booking*:
+    Booking ID: ${booking.id}
+    Room: ${booking.roomTitle}
+    Check-in: ${new Date(booking.checkInDate).toLocaleDateString()}
+    Check-out: ${new Date(booking.checkOutDate).toLocaleDateString()}
+    Status: ${booking.status.toUpperCase()}
+    
+    Need assistance? Feel free to reply to this message.
+  `;
+
+    const whatsappURL = `https://wa.me/${booking.customerPhone.replace(
+      /[^0-9]/g,
+      ""
+    )}?text=${encodeURIComponent(message)}`;
+
+    window.open(whatsappURL, "_blank");
+  };
+
+  const sendEmail = async (booking: Booking) => {
+    try {
+      const sendCustomerEmail = httpsCallable(functions, "sendCustomerEmail");
+      await sendCustomerEmail({
+        bookingId: booking.id,
+        subject: `Update on your booking #${booking.id}`,
+        message: `
+        <h2>Booking Information</h2>
+        <p>Room: ${booking.roomTitle}</p>
+        <p>Check-in: ${new Date(booking.checkInDate).toLocaleDateString()}</p>
+        <p>Check-out: ${new Date(booking.checkOutDate).toLocaleDateString()}</p>
+        <p>Status: ${booking.status.toUpperCase()}</p>
+        <p>If you have any questions, please reply to this email.</p>
+      `,
+      });
+      alert("Email sent successfully!");
+    } catch (err) {
+      console.error("Error sending email:", err);
+      alert("Failed to send email. Please try again.");
+    }
+  };
+
+  const sendStatusWhatsApp = (booking: Booking, newStatus: string) => {
+    const message = `
+  *Vintage Villa - Booking Status Update*
+  
+  Dear ${booking.customerName},
+  
+  Your booking #${
+    booking.id
+  } at Vintage Villa has been updated to: *${newStatus.toUpperCase()}*
+  
+  *Booking Details:*
+  Room: ${booking.roomTitle}
+  Check-in: ${new Date(booking.checkInDate).toLocaleDateString()}
+  Check-out: ${new Date(booking.checkOutDate).toLocaleDateString()}
+  Guests: ${booking.headCount}
+  
+  *Included Meals:*
+  Breakfast: ${booking.mealOptions.breakfast ? "Yes" : "No"}
+  Lunch: ${booking.mealOptions.lunch ? "Yes" : "No"} 
+  Dinner: ${booking.mealOptions.dinner ? "Yes" : "No"}
+  
+  Total Amount: $${booking.totalPrice.toFixed(2)}
+  
+  If you need to make any changes to your reservation or have questions, please reply to this message or contact our front desk.
+  
+  Thank you for choosing Vintage Villa!
+  We look forward to welcoming you.
+`;
+
+    const whatsappURL = `https://wa.me/${booking.customerPhone.replace(
+      /[^0-9]/g,
+      ""
+    )}?text=${encodeURIComponent(message)}`;
+
+    window.open(whatsappURL, "_blank");
+  };
+
+  const sendStatusEmail = async () => {
+    if (!selectedBooking || !emailConfirmationPending) return;
+
+    try {
+      setLoading(true);
+
+      const sendStatusChangeEmail = httpsCallable(
+        functions,
+        "sendStatusChangeEmail"
+      );
+
+      await sendStatusChangeEmail({
+        bookingId: selectedBooking.id,
+        newStatus: editForm.status,
+        customMessage: emailMessage,
+      });
+
+      setConfirmEmailOpen(false);
+      setEmailConfirmationPending(false);
+      setEmailMessage("");
+      setLoading(false);
+
+      // Show success message
+      alert("Status update email sent successfully!");
+    } catch (err) {
+      console.error("Error sending status update email:", err);
+      setLoading(false);
+      setError("Failed to send status update email. Please try again.");
+    }
+  };
+
+  const handleCancelEmail = () => {
+    setConfirmEmailOpen(false);
+    setEmailConfirmationPending(false);
+    setEmailMessage("");
+  };
+
+  // Utility Functions
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "confirmed":
+        return "success";
+      case "pending":
+        return "warning";
+      case "cancelled":
+        return "error";
+      case "completed":
+        return "info";
+      default:
+        return "default";
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-GB", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const formatCalendarData = (
+    bookings: Booking[],
+    unavailableDates: UnavailableDates[]
+  ) => {
+    const bookingEvents = bookings.map((booking) => ({
+      id: booking.id,
+      title: `${booking.roomTitle} - ${booking.customerName}`,
+      start: new Date(booking.checkInDate),
+      end: new Date(
+        new Date(booking.checkOutDate).getTime() + 24 * 60 * 60 * 1000
+      ),
+      resource: booking.status,
+      backgroundColor: (() => {
+        switch (booking.status) {
+          case "confirmed":
+            return "#28a745"; // green
+          case "pending":
+            return "#ffc107"; // yellow
+          case "cancelled":
+            return "#dc3545"; // red
+          case "completed":
+            return "#6c757d"; // gray
+          default:
+            return "#3788d8"; // default blue
+        }
+      })(),
+    }));
+
+    const unavailableEvents = unavailableDates.map((unavailableDate) => ({
+      id: unavailableDate.id,
+      title: `Unavailable: ${unavailableDate.reason || "Blocked"}`,
+      start: new Date(unavailableDate.startDate),
+      end: new Date(
+        new Date(unavailableDate.endDate).getTime() + 24 * 60 * 60 * 1000
+      ),
+      backgroundColor: "#6c757d", // Grey color
+      resource: unavailableDate,
+    }));
+
+    return [...bookingEvents, ...unavailableEvents];
+  };
+
+  // Calendar-specific Helpers
+  const handleEventSelect = (event: { id: string }) => {
+    // Find the booking and show details
+    const booking = bookings.find((b) => b.id === event.id);
+    if (booking) {
+      handleViewBooking(booking);
+    }
+  };
+
+  const handleNavigate = (newDate: React.SetStateAction<Date>) => {
+    setCalendarDate(newDate);
+  };
+
+  const handleViewChange = (newView: View) => {
+    setCalendarView(newView);
+  };
+
+  const locales = {
+    "en-GB": enGB,
+  };
+
+  const localizer = dateFnsLocalizer({
+    format,
+    parse,
+    startOfWeek,
+    getDay,
+    locales,
+  });
+
+  return (
+    <Container maxWidth="xl" sx={{ mt: 1, mb: 4 }}>
+      <Typography variant="h4" gutterBottom>
+        Booking Management
+      </Typography>
+
+      {/* Filter and Search */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={1} alignItems="center">
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField
+              select
+              label="Status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              fullWidth
+              size="small"
+            >
+              <MenuItem value="all">All Statuses</MenuItem>
+              <MenuItem value="pending">Pending</MenuItem>
+              <MenuItem value="confirmed">Confirmed</MenuItem>
+              <MenuItem value="cancelled">Cancelled</MenuItem>
+              <MenuItem value="completed">Completed</MenuItem>
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField
+              label="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Name, Email, Room, ID"
+              fullWidth
+              size="small"
+            />
+          </Grid>
+          <Grid
+            item
+            xs={12}
+            md={4}
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            <LocalizationProvider
+              dateAdapter={AdapterDateFns}
+              adapterLocale={enGB}
+            >
+              <DateRangePicker
+                value={dateFilter}
+                onChange={(newValue) => setDateFilter(newValue)}
+                slotProps={{
+                  textField: {
+                    size: "small", // Ensure consistent sizing
+                  },
+                }}
+              />
+            </LocalizationProvider>
+            <Tooltip title="Reset Date Filter">
+              <IconButton
+                color="primary"
+                onClick={() => setDateFilter([null, null])}
+                sx={{ ml: 1 }}
+              >
+                <ClearIcon />
+              </IconButton>
+            </Tooltip>
+          </Grid>
+          <Grid
+            item
+            md={2}
+            sx={{ display: "flex", justifyContent: "flex-end" }}
+          >
+            <Tooltip title="Toggle Calendar View">
+              <IconButton
+                color={calendarView ? "primary" : "default"}
+                onClick={() => setisCalendar(!isCalendar)}
+              >
+                {isCalendar ? <TableChartIcon /> : <CalendarTodayIcon />}
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Refresh Bookings">
+              <IconButton color="primary" onClick={fetchBookings}>
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Error message */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {!isCalendar ? (
+        <>
+          <Paper sx={{ width: "100%", overflow: "hidden" }}>
+            <TableContainer sx={{ maxHeight: 600 }}>
+              {loading ? (
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: 400,
+                  }}
+                >
+                  <CircularProgress />
+                </Box>
+              ) : filteredBookings.length === 0 ? (
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: 200,
+                  }}
+                >
+                  <Typography variant="h6" color="textSecondary">
+                    No bookings found
+                  </Typography>
+                </Box>
+              ) : (
+                <Table stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Booking ID</TableCell>
+                      <TableCell>Room</TableCell>
+                      <TableCell>Customer</TableCell>
+                      <TableCell>Check-in</TableCell>
+                      <TableCell>Check-out</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Price</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredBookings.map((booking) => (
+                      <TableRow key={booking.id} hover>
+                        <TableCell>{booking.id.substring(0, 8)}...</TableCell>
+                        <TableCell>{booking.roomTitle}</TableCell>
+                        <TableCell>
+                          <Tooltip title={booking.customerEmail}>
+                            <Typography variant="body2">
+                              {booking.customerName}
+                            </Typography>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>{formatDate(booking.checkInDate)}</TableCell>
+                        <TableCell>
+                          {formatDate(booking.checkOutDate)}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={booking.status}
+                            color={getStatusColor(booking.status) as any}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>${booking.totalPrice.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Tooltip title="View Details">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleViewBooking(booking)}
+                            >
+                              <VisibilityIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Edit Booking">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => handleEditBooking(booking)}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete Booking">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDeleteBooking(booking)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="WhatsApp">
+                            <IconButton
+                              size="small"
+                              color={
+                                booking.preferredContactMethod !== "email"
+                                  ? "success"
+                                  : "default"
+                              }
+                              onClick={() => sendWhatsApp(booking)}
+                              disabled={!booking.customerPhone}
+                            >
+                              <WhatsAppIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Email">
+                            <IconButton
+                              size="small"
+                              color={
+                                booking.preferredContactMethod !== "whatsapp"
+                                  ? "info"
+                                  : "default"
+                              }
+                              onClick={() => sendEmail(booking)}
+                            >
+                              <EmailIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </TableContainer>
+          </Paper>
+          <Paper sx={{ width: "100%", mt: 2, overflow: "hidden" }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                p: 2,
+              }}
+            >
+              <Typography variant="h5">Unavailable Dates</Typography>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setAddUnavailableDateOpen(true)}
+                startIcon={<AddIcon />}
+              >
+                Add
+              </Button>
+            </Box>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>ID</TableCell>
+                    <TableCell>Start Date</TableCell>
+                    <TableCell>End Date</TableCell>
+                    <TableCell>Reason</TableCell>
+                    <TableCell>Created At</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredUnavailableDates.map((date) => (
+                    <TableRow key={date.id}>
+                      <TableCell>{date.id.substring(0, 8)}...</TableCell>
+                      <TableCell>{formatDate(date.startDate)}</TableCell>
+                      <TableCell>{formatDate(date.endDate)}</TableCell>
+                      <TableCell>{date.reason || "N/A"}</TableCell>
+                      <TableCell>{formatDate(date.createdAt)}</TableCell>
+                      <TableCell>
+                        <IconButton
+                          onClick={() => handleEditUnavailableDate(date)}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={() => handleDeleteUnavailableDate(date.id)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        </>
+      ) : (
+        <Paper sx={{ height: 600, p: 2 }}>
+          <Calendar
+            localizer={localizer}
+            events={formatCalendarData(
+              filteredBookings,
+              filteredUnavailableDates
+            )}
+            startAccessor="start"
+            endAccessor="end"
+            style={{ height: "100%" }}
+            views={[Views.AGENDA, Views.MONTH, Views.WEEK, Views.DAY]}
+            date={calendarDate}
+            onNavigate={handleNavigate}
+            view={calendarView}
+            onView={handleViewChange}
+            tooltipAccessor={(event) =>
+              `${event.title}\nStatus: ${event.resource}`
+            }
+            onSelectEvent={(event) => {
+              if (
+                typeof event.resource !== "string" &&
+                event.resource.startDate
+              ) {
+                handleUnavailableDateSelect(event);
+              } else {
+                handleEventSelect(event);
+              }
+            }}
+            step={1}
+            timeslots={1}
+            eventPropGetter={(event) => ({
+              style: {
+                backgroundColor: event.backgroundColor,
+              },
+            })}
+          />
+        </Paper>
+      )}
+
+      {/* View Details Dialog */}
+      <ViewBookingDialog
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        booking={selectedBooking}
+        onEdit={(booking) => {
+          setDetailsOpen(false);
+          handleEditBooking(booking);
+        }}
+        getStatusColor={getStatusColor}
+        formatDate={formatDate}
+      />
+
+      {/* Edit Booking Dialog */}
+      <EditBookingDialog
+        editOpen={editOpen}
+        selectedBooking={selectedBooking}
+        setEditOpen={setEditOpen}
+        setEditForm={setEditForm}
+        editForm={editForm}
+        handleSaveEdit={handleSaveBooking}
+      />
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDeleteDialog
+        open={confirmDeleteOpen}
+        onClose={() => setConfirmDeleteOpen(false)}
+        onConfirmDelete={confirmDeleteBooking}
+        selectedBooking={selectedBooking}
+      />
+
+      {/* Email Confirmation Dialog */}
+      <EmailConfirmationDialog
+        open={confirmEmailOpen}
+        onClose={handleCancelEmail}
+        onSendEmail={sendStatusEmail}
+        loading={loading}
+        selectedBooking={selectedBooking}
+        editForm={editForm}
+        emailMessage={emailMessage}
+        setEmailMessage={setEmailMessage}
+      />
+
+      {/* Unavailable Dates Dialog */}
+      <UnavailableDatesDialog
+        open={addUnavailableDateOpen}
+        onClose={() => setAddUnavailableDateOpen(false)}
+        onSubmit={handleAddUnavailableDate}
+        startDate={newUnavailableDate.startDate}
+        endDate={newUnavailableDate.endDate}
+        reason={newUnavailableDate.reason}
+        onStartEndDateChange={(newValue) =>
+          setNewUnavailableDate((prev) => ({
+            ...prev,
+            startDate: newValue[0],
+            endDate: newValue[1],
+          }))
+        }
+        onReasonChange={(reason) =>
+          setNewUnavailableDate((prev) => ({
+            ...prev,
+            reason,
+          }))
+        }
+      />
+
+      {/* Edit Unavailable dates Dialog */}
+      <EditUnavailableDateDialog
+        open={editUnavailableDateOpen}
+        selectedUnavailableDate={selectedUnavailableDate}
+        setEditOpen={setEditUnavailableDateOpen}
+        setEditForm={setEditUnavailableDateForm}
+        editForm={editUnavailableDateForm}
+        handleSaveEdit={handleSaveUnavailableDate}
+      />
+
+      {/* Unavailable Date Details Dialog */}
+      <UnavailableDateDetailsDialog
+        open={unavailableDateDetailsOpen}
+        onClose={() => setUnavailableDateDetailsOpen(false)}
+        selectedUnavailableDate={selectedUnavailableDateView}
+        onEdit={(date) => {
+          handleEditUnavailableDate(date);
+          setUnavailableDateDetailsOpen(false);
+        }}
+        formatDate={formatDate}
+      />
+    </Container>
+  );
+};
+
+export default BookingManagement;

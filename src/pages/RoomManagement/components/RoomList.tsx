@@ -2,20 +2,21 @@ import * as React from "react";
 import { Paper, Typography, Box, IconButton, Button, Chip, Grid, Divider, List } from "@mui/material";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import { Room } from "../../../components/Types";
 
-interface Room {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  price_extra: number;
-  image: string;
-  isActive: boolean;
-  displayOrder: number;
-  capacity: number;
-  amenities: string[];
-  lastUpdated: number;
-}
+// interface Room {
+//   id: string;
+//   title: string;
+//   description: string;
+//   price: number;
+//   price_extra: number;
+//   image: string;
+//   isActive: boolean;
+//   displayOrder: number;
+//   capacity: number;
+//   amenities: string[];
+//   lastUpdated: number;
+// }
 
 interface RoomListProps {
   rooms: Room[];

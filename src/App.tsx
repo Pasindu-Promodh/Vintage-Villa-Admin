@@ -10,11 +10,11 @@ import { onAuthStateChanged } from "firebase/auth";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import "./App.css";
-import Bookings from "./pages/Bookings/Bookings";
 import { SnackbarProvider } from "notistack";
 import GalleryManagement from "./pages/GalleryManagement/GalleryManagement";
 import RoomManagement from "./pages/RoomManagement/RoomManagement";
 import TagManagement from "./pages/TagManagement";
+import BookingManagement from "./pages/Bookings/BookingManagement";
 
 // Create auth context
 interface AuthContextType {
@@ -79,8 +79,8 @@ const App: React.FC = () => {
 
             {/* Secure routes */}
             <Route
-              path="/bookings"
-              element={<SecureRoute element={<Bookings />} />}
+              path="/booking-management"
+              element={<SecureRoute element={<BookingManagement />} />}
             />
             <Route
               path="/gallery-management"

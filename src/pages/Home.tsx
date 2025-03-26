@@ -85,7 +85,7 @@ function Home() {
       title: "Bookings",
       icon: <EventIcon sx={{ fontSize: isMobile ? 30 : 40 }} />,
       color: "#4caf50",
-      path: "bookings",
+      path: "booking-management",
       description: "Manage customer reservations and availability"
     },
     {
