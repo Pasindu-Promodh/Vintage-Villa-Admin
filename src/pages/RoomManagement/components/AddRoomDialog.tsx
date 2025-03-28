@@ -19,28 +19,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { RoomDialogProps } from "../../../components/Types";
-
-// interface AddRoomDialogProps {
-//   open: boolean;
-//   formData: {
-//     title: string;
-//     description: string;
-//     price: number;
-//     price_extra: number;
-//     image: string;
-//     isActive: boolean;
-//     capacity: number;
-//     amenities: string[];
-//     displayOrder: number;
-//   };
-//   onClose: () => void;
-//   onInputChange: (
-//     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-//   ) => void;
-//   onCheckboxChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-//   onAmenitiesChange: (amenities: string[]) => void;
-//   onSubmit: () => void;
-// }
+import { AMENITIES_LIST } from "../../../components/Constants";
 
 const AddRoomDialog: React.FC<RoomDialogProps> = ({
   open,
@@ -155,33 +134,7 @@ const AddRoomDialog: React.FC<RoomDialogProps> = ({
                   </Box>
                 )}
               >
-                {[
-                  "Wi-Fi",
-                  "Air Conditioning",
-                  "Pantry",
-                  "TV",
-                  "Pool",
-                  "Parking",
-                  "Washing Machine",
-                  "Heating",
-                  "Breakfast",
-                  "Pets Allowed",
-                  "Bed linen",
-                  "Towels",
-                  "Shower cap",
-                  "Paper napkins",
-                  "Filtered water",
-                  "Coffee (Nescafé)",
-                  "Black tea bags",
-                  "Green tea bags",
-                  "Flavored tea bags",
-                  "Sugar sachets",
-                  "Snacks",
-                  "Soap",
-                  "Shampoo",
-                  "Conditioner",
-                  "Toilet paper",
-                ].map((amenity) => (
+                {AMENITIES_LIST.map((amenity) => (
                   <MenuItem key={amenity} value={amenity}>
                     {amenity}
                   </MenuItem>

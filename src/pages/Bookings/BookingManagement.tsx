@@ -888,8 +888,8 @@ const BookingManagement: React.FC = () => {
                 Add
               </Button>
             </Box>
-            <TableContainer>
-              <Table>
+            <TableContainer sx={{ maxHeight: 600 }}>
+              <Table stickyHeader>
                 <TableHead>
                   <TableRow>
                     <TableCell>ID</TableCell>
@@ -902,23 +902,31 @@ const BookingManagement: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {filteredUnavailableDates.map((date) => (
-                    <TableRow key={date.id}>
+                    <TableRow key={date.id} hover>
                       <TableCell>{date.id.substring(0, 8)}...</TableCell>
                       <TableCell>{formatDate(date.startDate)}</TableCell>
                       <TableCell>{formatDate(date.endDate)}</TableCell>
                       <TableCell>{date.reason || "N/A"}</TableCell>
                       <TableCell>{formatDate(date.createdAt)}</TableCell>
                       <TableCell>
-                        <IconButton
-                          onClick={() => handleEditUnavailableDate(date)}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          onClick={() => handleDeleteUnavailableDate(date.id)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
+                        <Tooltip title="Edit">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => handleEditUnavailableDate(date)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteUnavailableDate(date.id)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))}

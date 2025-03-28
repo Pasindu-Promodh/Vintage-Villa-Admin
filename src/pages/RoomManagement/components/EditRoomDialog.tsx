@@ -16,6 +16,7 @@ import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
+import { AMENITIES_LIST } from "../../../components/Constants";
 
 interface EditRoomDialogProps {
   open: boolean;
@@ -50,34 +51,6 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
-  const amenitiesList = [
-    "Wi-Fi",
-    "Air Conditioning",
-    "Pantry",
-    "TV",
-    "Pool",
-    "Parking",
-    "Washing Machine",
-    "Heating",
-    "Breakfast",
-    "Pets Allowed",
-    "Bed linen",
-    "Towels",
-    "Shower cap",
-    "Paper napkins",
-    "Filtered water",
-    "Coffee (Nescafé)",
-    "Black tea bags",
-    "Green tea bags",
-    "Flavored tea bags",
-    "Sugar sachets",
-    "Snacks",
-    "Soap",
-    "Shampoo",
-    "Conditioner",
-    "Toilet paper",
-  ];
 
   return (
     <Dialog 
@@ -180,7 +153,7 @@ const EditRoomDialog: React.FC<EditRoomDialogProps> = ({
                   </Box>
                 )}
               >
-                {amenitiesList.map((amenity) => (
+                {AMENITIES_LIST.map((amenity) => (
                   <MenuItem key={amenity} value={amenity}>
                     {amenity}
                   </MenuItem>
