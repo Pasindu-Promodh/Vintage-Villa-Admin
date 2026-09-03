@@ -66,7 +66,6 @@ import EmailIcon from "@mui/icons-material/Email";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import TableChartIcon from "@mui/icons-material/TableChart";
-import ClearIcon from "@mui/icons-material/Clear";
 import AddIcon from "@mui/icons-material/Add";
 
 // Local Component Imports
