@@ -27,6 +27,7 @@ import EditRoomDialog from "./components/EditRoomDialog";
 import DeleteConfirmationDialog from "./components/DeleteConfirmationDialog";
 import PricingSettingsCard from "./components/PricingSettingsCard";
 import AlertMessage from "./components/AlertMessage";
+import DashboardHeader from "../../components/DashboardHeader";
 import { enqueueSnackbar } from "notistack";
 import { PricingSettings, Room } from "../../components/Types";
 
@@ -353,12 +354,14 @@ function RoomManagement() {
   return (
     <Container 
       maxWidth={false} 
-      disableGutters={isMobile}
+      disableGutters
       sx={{
-        px: isMobile ? 1 : 2, 
         width: "100%"
       }}
     >
+      <DashboardHeader title="Room Management" />
+
+      <Box sx={{ px: isMobile ? 1.5 : 3 }}>
       {/* Header */}
       <Box
         display="flex"
@@ -367,15 +370,15 @@ function RoomManagement() {
         alignItems={isMobile ? "flex-start" : "center"}
         gap={isMobile ? 1 : 0}
         mb={2}
-        mt={1}
       >
-        <Typography variant={isMobile ? "h5" : "h4"}>Room Management</Typography>
+        <Typography variant={isMobile ? "subtitle1" : "h6"} color="text.secondary">
+          {rooms.length} room{rooms.length === 1 ? "" : "s"} listed
+        </Typography>
         <Button
           variant="contained"
           color="primary"
           fullWidth={isMobile}
           onClick={() => setIsAddDialogOpen(true)}
-          sx={{ mt: isMobile ? 1 : 0 }}
         >
           Add New Room
         </Button>
@@ -463,6 +466,7 @@ function RoomManagement() {
           }
         }}
       />
+      </Box>
     </Container>
   );
 }

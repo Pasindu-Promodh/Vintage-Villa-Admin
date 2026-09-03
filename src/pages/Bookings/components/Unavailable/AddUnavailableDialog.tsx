@@ -1,17 +1,18 @@
-import React from 'react';
-import { 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  DialogActions, 
-  Button, 
-  Grid, 
-  TextField
-} from '@mui/material';
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFnsV3";
-import { DateRangePicker } from "@mui/x-date-pickers-pro/DateRangePicker";
-import { enGB } from "date-fns/locale";
+import React from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Grid,
+  TextField,
+  MenuItem,
+  useTheme,
+  useMediaQuery,
+} from "@mui/material";
+import { Room } from "../../../../components/Types";
+import StyledDatePicker from "../../../../components/StyledDatePicker";
 
 interface UnavailableDatesDialogProps {
   open: boolean;
@@ -20,8 +21,13 @@ interface UnavailableDatesDialogProps {
   startDate: Date | null;
   endDate: Date | null;
   reason: string;
+  roomId: string;
+  rooms: Room[];
   onStartEndDateChange: (newValue: [Date | null, Date | null]) => void;
   onReasonChange: (reason: string) => void;
+  onRoomChange: (roomId: string) => void;
+  /** Given a room id (or "all"), returns booked/unavailable dates to highlight. */
+  getBookedDatesForRoom?: (roomIdOrTitle: string) => Date[];
 }
 
 const UnavailableDatesDialog: React.FC<UnavailableDatesDialogProps> = ({
@@ -31,35 +37,80 @@ const UnavailableDatesDialog: React.FC<UnavailableDatesDialogProps> = ({
   startDate,
   endDate,
   reason,
+  roomId,
+  rooms,
   onStartEndDateChange,
-  onReasonChange
+  onReasonChange,
+  onRoomChange,
+  getBookedDatesForRoom,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  const bookedDates = getBookedDatesForRoom
+    ? getBookedDatesForRoom(roomId)
+    : [];
+
   return (
     <Dialog
       open={open}
       onClose={onClose}
       maxWidth="sm"
       fullWidth
+      fullScreen={isMobile}
+      PaperProps={{
+        sx: {
+          m: isMobile ? 0 : 2,
+          maxHeight: isMobile ? "100%" : "90vh",
+          borderRadius: isMobile ? 0 : undefined,
+        },
+      }}
     >
-      <DialogTitle>Add Unavailable Dates</DialogTitle>
-      <DialogContent>
+      <DialogTitle sx={{ px: isMobile ? 2 : 3 }}>
+        Add Unavailable Dates
+      </DialogTitle>
+      <DialogContent sx={{ px: isMobile ? 2 : 3 }}>
         <Grid container spacing={2} sx={{ mt: 1 }}>
           <Grid item xs={12}>
-            <LocalizationProvider
-              dateAdapter={AdapterDateFns}
-              adapterLocale={enGB}
+            <TextField
+              select
+              label="Applies To"
+              value={roomId}
+              onChange={(e) => onRoomChange(e.target.value)}
+              fullWidth
+              size={isMobile ? "small" : "medium"}
+              helperText="Choose a specific room, or block every room at once"
             >
-              <DateRangePicker
-                value={[startDate, endDate]}
-                onChange={onStartEndDateChange}
-                slotProps={{
-                  textField: {
-                    size: "small",
-                    fullWidth: true,
-                  },
-                }}
-              />
-            </LocalizationProvider>
+              <MenuItem value="all">All Rooms</MenuItem>
+              {rooms.map((room) => (
+                <MenuItem key={room.id} value={room.id}>
+                  {room.title}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <StyledDatePicker
+              label="Start Date"
+              value={startDate}
+              onChange={(newValue) =>
+                onStartEndDateChange([newValue, endDate])
+              }
+              bookedDates={bookedDates}
+              allowClear={false}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <StyledDatePicker
+              label="End Date"
+              value={endDate}
+              minDate={startDate ?? undefined}
+              onChange={(newValue) =>
+                onStartEndDateChange([startDate, newValue])
+              }
+              bookedDates={bookedDates}
+              allowClear={false}
+            />
           </Grid>
           <Grid item xs={12}>
             <TextField
@@ -67,18 +118,21 @@ const UnavailableDatesDialog: React.FC<UnavailableDatesDialogProps> = ({
               value={reason}
               onChange={(e) => onReasonChange(e.target.value)}
               fullWidth
+              size={isMobile ? "small" : "medium"}
               placeholder="Optional: Provide a reason (e.g., Maintenance, Private Event)"
             />
           </Grid>
         </Grid>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>
+      <DialogActions sx={{ px: isMobile ? 2 : 3, pb: isMobile ? 2 : 1.5 }}>
+        <Button onClick={onClose} size={isMobile ? "small" : "medium"}>
           Cancel
         </Button>
         <Button
           onClick={onSubmit}
           color="primary"
+          variant="contained"
+          size={isMobile ? "small" : "medium"}
           disabled={!startDate || !endDate}
         >
           Add Unavailable Dates

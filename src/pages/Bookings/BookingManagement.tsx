@@ -1,5 +1,5 @@
 // React Core Imports
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
 // React Big Calendar Imports
 import { Calendar, dateFnsLocalizer, View, Views } from "react-big-calendar";
@@ -20,7 +20,7 @@ import { db, functions } from "../../config/firebaseConfig";
 import { httpsCallable } from "firebase/functions";
 
 // Date Handling Imports
-import { parse, startOfWeek, getDay, format } from "date-fns";
+import { parse, startOfWeek, getDay, format, eachDayOfInterval } from "date-fns";
 import { enGB } from "date-fns/locale";
 
 // Material-UI (MUI) Core Imports
@@ -44,12 +44,18 @@ import {
   Tooltip,
   CircularProgress,
   Alert,
+  Card,
+  CardContent,
+  Stack,
+  Divider,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 
-// Material-UI Date Picker Imports
-import { DateRangePicker } from "@mui/x-date-pickers-pro/DateRangePicker";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFnsV3";
+// Local reusable components
+import DashboardHeader from "../../components/DashboardHeader";
+import StyledDatePicker from "../../components/StyledDatePicker";
+import { toLocalDateOnly } from "../../utils/dateUtils";
 
 // Material-UI Icon Imports
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -60,7 +66,6 @@ import EmailIcon from "@mui/icons-material/Email";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import TableChartIcon from "@mui/icons-material/TableChart";
-import ClearIcon from "@mui/icons-material/Clear";
 import AddIcon from "@mui/icons-material/Add";
 
 // Local Component Imports
@@ -72,14 +77,20 @@ import EmailConfirmationDialog from "./components/Bookings/EmailConfirmationDial
 import UnavailableDatesDialog from "./components/Unavailable/AddUnavailableDialog";
 
 // Type Imports
-import { Booking, UnavailableDates } from "../../components/Types";
+import { Booking, Room, UnavailableDates } from "../../components/Types";
 import UnavailableDateDetailsDialog from "./components/Unavailable/ViewUnavailableDialog";
 
 const BookingManagement: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   // Booking Management States
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+
+  // Rooms (used for the "Applies To" room selector on unavailable dates)
+  const [rooms, setRooms] = useState<Room[]>([]);
 
   // Form Editing States
   const [editForm, setEditForm] = useState<Partial<Booking>>({});
@@ -107,10 +118,12 @@ const BookingManagement: React.FC = () => {
     startDate: Date | null;
     endDate: Date | null;
     reason: string;
+    roomId: string;
   }>({
     startDate: null,
     endDate: null,
     reason: "",
+    roomId: "all",
   });
 
   // Dialog and Modal States
@@ -122,6 +135,7 @@ const BookingManagement: React.FC = () => {
 
   // Filter and Search States
   const [statusFilter, setStatusFilter] = useState("all");
+  const [roomFilter, setRoomFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState<[Date | null, Date | null]>([
     new Date(),
@@ -145,6 +159,7 @@ const BookingManagement: React.FC = () => {
   useEffect(() => {
     fetchBookings();
     fetchUnavailableDates();
+    fetchRooms();
   }, []);
 
   // Apply filters to bookings
@@ -166,6 +181,12 @@ const BookingManagement: React.FC = () => {
           booking.roomTitle.toLowerCase().includes(query) ||
           booking.id.toLowerCase().includes(query)
       );
+    }
+
+    // Filter by room
+    if (roomFilter !== "all") {
+      const roomTitle = rooms.find((r) => r.id === roomFilter)?.title;
+      result = result.filter((booking) => booking.roomTitle === roomTitle);
     }
 
     // Filter by date range
@@ -190,10 +211,17 @@ const BookingManagement: React.FC = () => {
     }
 
     setFilteredBookings(result);
-  }, [bookings, statusFilter, searchQuery, dateFilter]);
+  }, [bookings, statusFilter, roomFilter, rooms, searchQuery, dateFilter]);
 
   useEffect(() => {
     let result = [...unavailableDates];
+
+    // Filter by room
+    if (roomFilter !== "all") {
+      result = result.filter(
+        (d) => !d.roomId || d.roomId === "all" || d.roomId === roomFilter
+      );
+    }
 
     // Filter by date range
     if (dateFilter[0]) {
@@ -217,7 +245,7 @@ const BookingManagement: React.FC = () => {
     }
 
     setFilteredUnavailableDates(result);
-  }, [unavailableDates, dateFilter]);
+  }, [unavailableDates, roomFilter, dateFilter]);
 
   // Fetch Functions
   const fetchBookings = async () => {
@@ -261,6 +289,84 @@ const BookingManagement: React.FC = () => {
     } catch (err) {
       console.error("Error fetching unavailable dates:", err);
     }
+  };
+
+  const fetchRooms = async () => {
+    try {
+      const roomsCollection = collection(db, "rooms");
+      const snapshot = await getDocs(roomsCollection);
+      const roomsList: Room[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Room[];
+      setRooms(roomsList);
+    } catch (err) {
+      console.error("Error fetching rooms:", err);
+    }
+  };
+
+  // All booked/unavailable dates across every room, used to highlight the
+  // main filter calendar so admins can see availability at a glance.
+  const allBookedDates = useMemo(() => {
+    const dates: Date[] = [];
+    bookings
+      .filter((b) => b.status !== "cancelled")
+      .forEach((b) => {
+        const start = toLocalDateOnly(b.checkInDate);
+        const end = toLocalDateOnly(b.checkOutDate);
+        if (start <= end) dates.push(...eachDayOfInterval({ start, end }));
+      });
+    unavailableDates.forEach((d) => {
+      const start = toLocalDateOnly(d.startDate);
+      const end = toLocalDateOnly(d.endDate);
+      if (start <= end) dates.push(...eachDayOfInterval({ start, end }));
+    });
+    return dates;
+  }, [bookings, unavailableDates]);
+
+  // Booked/unavailable dates scoped to a single room (or every room, for
+  // "all"), used inside the Edit Booking / Unavailable Date dialogs so the
+  // calendar there reflects only what's relevant to the room being edited.
+  const getBookedDatesForRoom = (
+    roomIdOrTitle: string,
+    excludeBookingId?: string
+  ) => {
+    const room = rooms.find(
+      (r) => r.id === roomIdOrTitle || r.title === roomIdOrTitle
+    );
+    const roomTitle = room?.title;
+    const roomId = room?.id;
+
+    const dates: Date[] = [];
+
+    bookings
+      .filter(
+        (b) =>
+          b.status !== "cancelled" &&
+          b.id !== excludeBookingId &&
+          (roomIdOrTitle === "all" || b.roomTitle === roomTitle)
+      )
+      .forEach((b) => {
+        const start = toLocalDateOnly(b.checkInDate);
+        const end = toLocalDateOnly(b.checkOutDate);
+        if (start <= end) dates.push(...eachDayOfInterval({ start, end }));
+      });
+
+    unavailableDates
+      .filter(
+        (d) =>
+          !d.roomId ||
+          d.roomId === "all" ||
+          roomIdOrTitle === "all" ||
+          d.roomId === roomId
+      )
+      .forEach((d) => {
+        const start = toLocalDateOnly(d.startDate);
+        const end = toLocalDateOnly(d.endDate);
+        if (start <= end) dates.push(...eachDayOfInterval({ start, end }));
+      });
+
+    return dates;
   };
 
   // Booking View and Edit Functions
@@ -354,11 +460,18 @@ const BookingManagement: React.FC = () => {
 
     try {
       const unavailableDatesCollection = collection(db, "unavailable_dates");
+      const roomTitle =
+        newUnavailableDate.roomId === "all"
+          ? undefined
+          : rooms.find((r) => r.id === newUnavailableDate.roomId)?.title;
+
       const newDateEntry = {
-        startDate: newUnavailableDate.startDate.toISOString(),
-        endDate: newUnavailableDate.endDate.toISOString(),
+        startDate: format(newUnavailableDate.startDate, "yyyy-MM-dd"),
+        endDate: format(newUnavailableDate.endDate, "yyyy-MM-dd"),
         reason: newUnavailableDate.reason || "",
         createdAt: new Date().toISOString(),
+        roomId: newUnavailableDate.roomId,
+        ...(roomTitle ? { roomTitle } : {}),
       };
 
       const docRef = await addDoc(unavailableDatesCollection, newDateEntry);
@@ -376,6 +489,7 @@ const BookingManagement: React.FC = () => {
         startDate: null,
         endDate: null,
         reason: "",
+        roomId: "all",
       });
       setAddUnavailableDateOpen(false);
     } catch (err) {
@@ -390,6 +504,8 @@ const BookingManagement: React.FC = () => {
       startDate: date.startDate,
       endDate: date.endDate,
       reason: date.reason || "",
+      roomId: date.roomId || "all",
+      roomTitle: date.roomTitle,
     });
     setEditUnavailableDateOpen(true);
   };
@@ -583,10 +699,12 @@ const BookingManagement: React.FC = () => {
     const bookingEvents = bookings.map((booking) => ({
       id: booking.id,
       title: `${booking.roomTitle} - ${booking.customerName}`,
-      start: new Date(booking.checkInDate),
-      end: new Date(
-        new Date(booking.checkOutDate).getTime() + 24 * 60 * 60 * 1000
-      ),
+      start: toLocalDateOnly(booking.checkInDate),
+      end: (() => {
+        const end = toLocalDateOnly(booking.checkOutDate);
+        end.setDate(end.getDate() + 1);
+        return end;
+      })(),
       resource: booking.status,
       backgroundColor: (() => {
         switch (booking.status) {
@@ -604,16 +722,27 @@ const BookingManagement: React.FC = () => {
       })(),
     }));
 
-    const unavailableEvents = unavailableDates.map((unavailableDate) => ({
-      id: unavailableDate.id,
-      title: `Unavailable: ${unavailableDate.reason || "Blocked"}`,
-      start: new Date(unavailableDate.startDate),
-      end: new Date(
-        new Date(unavailableDate.endDate).getTime() + 24 * 60 * 60 * 1000
-      ),
-      backgroundColor: "#6c757d", // Grey color
-      resource: unavailableDate,
-    }));
+    const unavailableEvents = unavailableDates.map((unavailableDate) => {
+      const roomLabel =
+        !unavailableDate.roomId || unavailableDate.roomId === "all"
+          ? "All Rooms"
+          : unavailableDate.roomTitle || unavailableDate.roomId;
+
+      return {
+        id: unavailableDate.id,
+        title: `Unavailable (${roomLabel}): ${
+          unavailableDate.reason || "Blocked"
+        }`,
+        start: toLocalDateOnly(unavailableDate.startDate),
+        end: (() => {
+          const end = toLocalDateOnly(unavailableDate.endDate);
+          end.setDate(end.getDate() + 1);
+          return end;
+        })(),
+        backgroundColor: "#6c757d", // Grey color
+        resource: unavailableDate,
+      };
+    });
 
     return [...bookingEvents, ...unavailableEvents];
   };
@@ -648,91 +777,102 @@ const BookingManagement: React.FC = () => {
   });
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 1, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Booking Management
-      </Typography>
+    <Container maxWidth="xl" sx={{ mt: 0, mb: 4 }} disableGutters={isMobile}>
+      <DashboardHeader
+        title="Booking Management"
+        actions={
+          <Tooltip title="Refresh Bookings">
+            <IconButton color="primary" onClick={fetchBookings} size="small">
+              <RefreshIcon />
+            </IconButton>
+          </Tooltip>
+        }
+      />
 
-      {/* Filter and Search */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Grid container spacing={1} alignItems="center">
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              select
-              label="Status"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              fullWidth
-              size="small"
-            >
-              <MenuItem value="all">All Statuses</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>
-              <MenuItem value="confirmed">Confirmed</MenuItem>
-              <MenuItem value="cancelled">Cancelled</MenuItem>
-              <MenuItem value="completed">Completed</MenuItem>
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              label="Search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Name, Email, Room, ID"
-              fullWidth
-              size="small"
-            />
-          </Grid>
-          <Grid
-            item
-            xs={12}
-            md={4}
-            sx={{ display: "flex", alignItems: "center" }}
-          >
-            <LocalizationProvider
-              dateAdapter={AdapterDateFns}
-              adapterLocale={enGB}
-            >
-              <DateRangePicker
-                value={dateFilter}
-                onChange={(newValue) => setDateFilter(newValue)}
-                slotProps={{
-                  textField: {
-                    size: "small", // Ensure consistent sizing
-                  },
-                }}
+      <Box sx={{ px: isMobile ? 1.5 : 0 }}>
+        {/* Filter and Search */}
+        <Paper sx={{ p: isMobile ? 1.5 : 2, mb: 3 }}>
+          <Grid container spacing={1} alignItems="center">
+            <Grid item xs={12} sm={6} md={2}>
+              <TextField
+                select
+                label="Status"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                fullWidth
+                size="small"
+              >
+                <MenuItem value="all">All Statuses</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="confirmed">Confirmed</MenuItem>
+                <MenuItem value="cancelled">Cancelled</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6} md={2}>
+              <TextField
+                select
+                label="Room"
+                value={roomFilter}
+                onChange={(e) => setRoomFilter(e.target.value)}
+                fullWidth
+                size="small"
+              >
+                <MenuItem value="all">All Rooms</MenuItem>
+                {rooms.map((room) => (
+                  <MenuItem key={room.id} value={room.id}>
+                    {room.title}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                label="Search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Name, Email, Room, ID"
+                fullWidth
+                size="small"
               />
-            </LocalizationProvider>
-            <Tooltip title="Reset Date Filter">
-              <IconButton
-                color="primary"
-                onClick={() => setDateFilter([null, null])}
-                sx={{ ml: 1 }}
-              >
-                <ClearIcon />
-              </IconButton>
-            </Tooltip>
+            </Grid>
+            <Grid item xs={6} md={2}>
+              <StyledDatePicker
+                label="From"
+                value={dateFilter[0]}
+                onChange={(date) => setDateFilter([date, dateFilter[1]])}
+                bookedDates={allBookedDates}
+                showTodayShortcut
+              />
+            </Grid>
+            <Grid item xs={6} md={2}>
+              <StyledDatePicker
+                label="To"
+                value={dateFilter[1]}
+                onChange={(date) => setDateFilter([dateFilter[0], date])}
+                bookedDates={allBookedDates}
+              />
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              md={1}
+              sx={{
+                display: "flex",
+                justifyContent: isMobile ? "flex-start" : "flex-end",
+              }}
+            >
+              <Tooltip title="Toggle Calendar View">
+                <IconButton
+                  color={calendarView ? "primary" : "default"}
+                  onClick={() => setisCalendar(!isCalendar)}
+                >
+                  {isCalendar ? <TableChartIcon /> : <CalendarTodayIcon />}
+                </IconButton>
+              </Tooltip>
+            </Grid>
           </Grid>
-          <Grid
-            item
-            md={2}
-            sx={{ display: "flex", justifyContent: "flex-end" }}
-          >
-            <Tooltip title="Toggle Calendar View">
-              <IconButton
-                color={calendarView ? "primary" : "default"}
-                onClick={() => setisCalendar(!isCalendar)}
-              >
-                {isCalendar ? <TableChartIcon /> : <CalendarTodayIcon />}
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Refresh Bookings">
-              <IconButton color="primary" onClick={fetchBookings}>
-                <RefreshIcon />
-              </IconButton>
-            </Tooltip>
-          </Grid>
-        </Grid>
-      </Paper>
+        </Paper>
 
       {/* Error message */}
       {error && (
@@ -744,32 +884,139 @@ const BookingManagement: React.FC = () => {
       {!isCalendar ? (
         <>
           <Paper sx={{ width: "100%", overflow: "hidden" }}>
-            <TableContainer sx={{ maxHeight: 600 }}>
-              {loading ? (
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    height: 400,
-                  }}
-                >
-                  <CircularProgress />
-                </Box>
-              ) : filteredBookings.length === 0 ? (
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    height: 200,
-                  }}
-                >
-                  <Typography variant="h6" color="textSecondary">
-                    No bookings found
-                  </Typography>
-                </Box>
-              ) : (
+            {loading ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: 400,
+                }}
+              >
+                <CircularProgress />
+              </Box>
+            ) : filteredBookings.length === 0 ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: 200,
+                }}
+              >
+                <Typography variant="h6" color="textSecondary">
+                  No bookings found
+                </Typography>
+              </Box>
+            ) : isMobile ? (
+              // Mobile: card list instead of a wide table
+              <Stack spacing={1.5} sx={{ p: 1.5 }}>
+                {filteredBookings.map((booking) => (
+                  <Card key={booking.id} variant="outlined">
+                    <CardContent sx={{ pb: "12px !important" }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          mb: 1,
+                        }}
+                      >
+                        <Box>
+                          <Typography variant="subtitle2" fontWeight={600}>
+                            {booking.roomTitle}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {booking.customerName}
+                          </Typography>
+                        </Box>
+                        <Chip
+                          label={booking.status}
+                          color={getStatusColor(booking.status) as any}
+                          size="small"
+                        />
+                      </Box>
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        {formatDate(booking.checkInDate)} →{" "}
+                        {formatDate(booking.checkOutDate)}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mb: 1 }}
+                      >
+                        ${booking.totalPrice.toFixed(2)} · ID{" "}
+                        {booking.id.substring(0, 8)}...
+                      </Typography>
+                      <Divider sx={{ mb: 1 }} />
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "flex-end",
+                          gap: 0.5,
+                        }}
+                      >
+                        <Tooltip title="View Details">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleViewBooking(booking)}
+                          >
+                            <VisibilityIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Edit Booking">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => handleEditBooking(booking)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete Booking">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteBooking(booking)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="WhatsApp">
+                          <IconButton
+                            size="small"
+                            color={
+                              booking.preferredContactMethod !== "email"
+                                ? "success"
+                                : "default"
+                            }
+                            onClick={() => sendWhatsApp(booking)}
+                            disabled={!booking.customerPhone}
+                          >
+                            <WhatsAppIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Email">
+                          <IconButton
+                            size="small"
+                            color={
+                              booking.preferredContactMethod !== "whatsapp"
+                                ? "info"
+                                : "default"
+                            }
+                            onClick={() => sendEmail(booking)}
+                          >
+                            <EmailIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            ) : (
+              // Desktop: table
+              <TableContainer sx={{ maxHeight: 600 }}>
                 <Table stickyHeader>
                   <TableHead>
                     <TableRow>
@@ -866,8 +1113,8 @@ const BookingManagement: React.FC = () => {
                     ))}
                   </TableBody>
                 </Table>
-              )}
-            </TableContainer>
+              </TableContainer>
+            )}
           </Paper>
           <Paper sx={{ width: "100%", mt: 2, overflow: "hidden" }}>
             <Box
@@ -875,40 +1122,57 @@ const BookingManagement: React.FC = () => {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                p: 2,
+                p: isMobile ? 1.5 : 2,
+                flexWrap: "wrap",
+                gap: 1,
               }}
             >
-              <Typography variant="h5">Unavailable Dates</Typography>
+              <Typography variant="h6">Unavailable Dates</Typography>
               <Button
                 variant="contained"
                 color="primary"
+                size={isMobile ? "small" : "medium"}
                 onClick={() => setAddUnavailableDateOpen(true)}
                 startIcon={<AddIcon />}
               >
                 Add
               </Button>
             </Box>
-            <TableContainer sx={{ maxHeight: 600 }}>
-              <Table stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>ID</TableCell>
-                    <TableCell>Start Date</TableCell>
-                    <TableCell>End Date</TableCell>
-                    <TableCell>Reason</TableCell>
-                    <TableCell>Created At</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredUnavailableDates.map((date) => (
-                    <TableRow key={date.id} hover>
-                      <TableCell>{date.id.substring(0, 8)}...</TableCell>
-                      <TableCell>{formatDate(date.startDate)}</TableCell>
-                      <TableCell>{formatDate(date.endDate)}</TableCell>
-                      <TableCell>{date.reason || "N/A"}</TableCell>
-                      <TableCell>{formatDate(date.createdAt)}</TableCell>
-                      <TableCell>
+            {isMobile ? (
+              <Stack spacing={1.5} sx={{ p: 1.5, pt: 0 }}>
+                {filteredUnavailableDates.map((date) => (
+                  <Card key={date.id} variant="outlined">
+                    <CardContent sx={{ pb: "12px !important" }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          mb: 1,
+                        }}
+                      >
+                        <Typography variant="body2">
+                          {formatDate(date.startDate)} →{" "}
+                          {formatDate(date.endDate)}
+                        </Typography>
+                        <Chip
+                          label={
+                            !date.roomId || date.roomId === "all"
+                              ? "All Rooms"
+                              : date.roomTitle || date.roomId
+                          }
+                          size="small"
+                        />
+                      </Box>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mb: 1 }}
+                      >
+                        {date.reason || "No reason specified"}
+                      </Typography>
+                      <Divider sx={{ mb: 1 }} />
+                      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
                         <Tooltip title="Edit">
                           <IconButton
                             size="small"
@@ -927,16 +1191,75 @@ const BookingManagement: React.FC = () => {
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                      </TableCell>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            ) : (
+              <TableContainer sx={{ maxHeight: 600 }}>
+                <Table stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>ID</TableCell>
+                      <TableCell>Room</TableCell>
+                      <TableCell>Start Date</TableCell>
+                      <TableCell>End Date</TableCell>
+                      <TableCell>Reason</TableCell>
+                      <TableCell>Created At</TableCell>
+                      <TableCell>Actions</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {filteredUnavailableDates.map((date) => (
+                      <TableRow key={date.id} hover>
+                        <TableCell>{date.id.substring(0, 8)}...</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={
+                              !date.roomId || date.roomId === "all"
+                                ? "All Rooms"
+                                : date.roomTitle || date.roomId
+                            }
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>{formatDate(date.startDate)}</TableCell>
+                        <TableCell>{formatDate(date.endDate)}</TableCell>
+                        <TableCell>{date.reason || "N/A"}</TableCell>
+                        <TableCell>{formatDate(date.createdAt)}</TableCell>
+                        <TableCell>
+                          <Tooltip title="Edit">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => handleEditUnavailableDate(date)}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() =>
+                                handleDeleteUnavailableDate(date.id)
+                              }
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </Paper>
         </>
       ) : (
-        <Paper sx={{ height: 600, p: 2 }}>
+        <Paper sx={{ height: isMobile ? 500 : 600, p: isMobile ? 1 : 2 }}>
           <Calendar
             localizer={localizer}
             events={formatCalendarData(
@@ -974,6 +1297,7 @@ const BookingManagement: React.FC = () => {
           />
         </Paper>
       )}
+      </Box>
 
       {/* View Details Dialog */}
       <ViewBookingDialog
@@ -996,6 +1320,10 @@ const BookingManagement: React.FC = () => {
         setEditForm={setEditForm}
         editForm={editForm}
         handleSaveEdit={handleSaveBooking}
+        bookedDates={getBookedDatesForRoom(
+          selectedBooking?.roomTitle || "all",
+          selectedBooking?.id
+        )}
       />
 
       {/* Confirm Delete Dialog */}
@@ -1026,6 +1354,8 @@ const BookingManagement: React.FC = () => {
         startDate={newUnavailableDate.startDate}
         endDate={newUnavailableDate.endDate}
         reason={newUnavailableDate.reason}
+        roomId={newUnavailableDate.roomId}
+        rooms={rooms}
         onStartEndDateChange={(newValue) =>
           setNewUnavailableDate((prev) => ({
             ...prev,
@@ -1039,16 +1369,25 @@ const BookingManagement: React.FC = () => {
             reason,
           }))
         }
+        onRoomChange={(roomId) =>
+          setNewUnavailableDate((prev) => ({
+            ...prev,
+            roomId,
+          }))
+        }
+        getBookedDatesForRoom={getBookedDatesForRoom}
       />
 
       {/* Edit Unavailable dates Dialog */}
       <EditUnavailableDateDialog
         open={editUnavailableDateOpen}
         selectedUnavailableDate={selectedUnavailableDate}
+        rooms={rooms}
         setEditOpen={setEditUnavailableDateOpen}
         setEditForm={setEditUnavailableDateForm}
         editForm={editUnavailableDateForm}
         handleSaveEdit={handleSaveUnavailableDate}
+        getBookedDatesForRoom={getBookedDatesForRoom}
       />
 
       {/* Unavailable Date Details Dialog */}

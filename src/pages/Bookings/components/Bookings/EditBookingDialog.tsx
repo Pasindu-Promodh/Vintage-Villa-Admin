@@ -12,14 +12,11 @@ import {
   useTheme,
   useMediaQuery,
 } from "@mui/material";
-import { DateRangePicker } from "@mui/x-date-pickers-pro/DateRangePicker";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFnsV3";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { format } from "date-fns";
-import { enGB } from "date-fns/locale";
-import "react-big-calendar/lib/css/react-big-calendar.css";
 import InputAdornment from "@mui/material/InputAdornment";
+import StyledDatePicker from "../../../../components/StyledDatePicker";
+import { toLocalDateOnly } from "../../../../utils/dateUtils";
 
 interface EditBookingDialogProps {
   editOpen: boolean;
@@ -45,6 +42,8 @@ interface EditBookingDialogProps {
   setEditOpen: (open: boolean) => void;
   setEditForm: (form: any) => void;
   handleSaveEdit: () => void;
+  /** Booked/unavailable dates for this booking's room, to highlight in red. */
+  bookedDates?: Date[];
 }
 
 const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
@@ -54,6 +53,7 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
   setEditOpen,
   setEditForm,
   handleSaveEdit,
+  bookedDates = [],
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -158,38 +158,49 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
 
               {/* Dates */}
               <Grid item xs={12} sm={6}>
-                <LocalizationProvider
-                  dateAdapter={AdapterDateFns}
-                  adapterLocale={enGB}
-                >
-                  <DateRangePicker
-                    value={[
-                      editForm.checkInDate
-                        ? new Date(editForm.checkInDate)
-                        : null,
-                      editForm.checkOutDate
-                        ? new Date(editForm.checkOutDate)
-                        : null,
-                    ]}
-                    onChange={(newValue) => {
-                      setEditForm({
-                        ...editForm,
-                        checkInDate: newValue[0]
-                          ? format(newValue[0], "yyyy-MM-dd")
-                          : "",
-                        checkOutDate: newValue[1]
-                          ? format(newValue[1], "yyyy-MM-dd")
-                          : "",
-                      });
-                    }}
-                    slotProps={{
-                      textField: {
-                        size: isMobile ? "small" : "medium",
-                        fullWidth: true,
-                      },
-                    }}
-                  />
-                </LocalizationProvider>
+                <StyledDatePicker
+                  label="Check-in Date"
+                  value={
+                    editForm.checkInDate
+                      ? toLocalDateOnly(editForm.checkInDate)
+                      : null
+                  }
+                  onChange={(newValue) => {
+                    setEditForm({
+                      ...editForm,
+                      checkInDate: newValue
+                        ? format(newValue, "yyyy-MM-dd")
+                        : "",
+                    });
+                  }}
+                  bookedDates={bookedDates}
+                  allowClear={false}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <StyledDatePicker
+                  label="Check-out Date"
+                  value={
+                    editForm.checkOutDate
+                      ? toLocalDateOnly(editForm.checkOutDate)
+                      : null
+                  }
+                  minDate={
+                    editForm.checkInDate
+                      ? toLocalDateOnly(editForm.checkInDate)
+                      : undefined
+                  }
+                  onChange={(newValue) => {
+                    setEditForm({
+                      ...editForm,
+                      checkOutDate: newValue
+                        ? format(newValue, "yyyy-MM-dd")
+                        : "",
+                    });
+                  }}
+                  bookedDates={bookedDates}
+                  allowClear={false}
+                />
               </Grid>
 
               {/* Numeric Fields */}

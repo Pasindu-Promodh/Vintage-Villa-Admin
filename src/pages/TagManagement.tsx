@@ -25,10 +25,13 @@ import {
   Card,
   CardContent,
   Alert,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
+import DashboardHeader from "../components/DashboardHeader";
 
 interface Tag {
   id: string;
@@ -38,6 +41,9 @@ interface Tag {
 }
 
 function TagManagement() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   const [tags, setTags] = useState<Tag[]>([]);
   const [newTagName, setNewTagName] = useState("");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -159,12 +165,12 @@ function TagManagement() {
   };
 
   return (
-    <Container>
-      <Box mb={4}>
-        <Typography variant="h4" mb={2}>
-          Tag Management
-        </Typography>
-        <Typography variant="body1" mb={3}>
+    <Container disableGutters={isMobile}>
+      <DashboardHeader title="Tag Management" />
+
+      <Box sx={{ px: isMobile ? 1.5 : 0 }}>
+      <Box mb={isMobile ? 2 : 4}>
+        <Typography variant="body1" mb={isMobile ? 2 : 3} color="text.secondary">
           Create and manage tags that can be used for your images. These tags
           will be available in dropdown menus when uploading or editing images.
         </Typography>
@@ -182,14 +188,15 @@ function TagManagement() {
       )}
 
       {/* Add new tag */}
-      <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
+      <Paper elevation={3} sx={{ p: isMobile ? 2 : 3, mb: isMobile ? 2 : 4 }}>
         <Typography variant="h6" mb={2}>
           Add New Tag
         </Typography>
-        <Box display="flex" gap={2}>
+        <Box display="flex" flexDirection={isMobile ? "column" : "row"} gap={2}>
           <TextField
             label="Tag Name"
             fullWidth
+            size={isMobile ? "small" : "medium"}
             value={newTagName}
             onChange={(e) => setNewTagName(e.target.value)}
             onKeyDown={(e) => {
@@ -198,14 +205,20 @@ function TagManagement() {
               }
             }}
           />
-          <Button variant="contained" startIcon={<AddIcon />} onClick={addTag}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={addTag}
+            fullWidth={isMobile}
+            size={isMobile ? "medium" : "large"}
+          >
             Add
           </Button>
         </Box>
       </Paper>
 
       {/* Tag list */}
-      <Paper elevation={3} sx={{ p: 3 }}>
+      <Paper elevation={3} sx={{ p: isMobile ? 2 : 3 }}>
         <Typography variant="h6" mb={2}>
           Existing Tags ({tags.length})
         </Typography>
@@ -255,9 +268,16 @@ function TagManagement() {
           </Typography>
         )}
       </Paper>
+      </Box>
 
       {/* Edit Tag Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
+      <Dialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        fullScreen={isMobile}
+        fullWidth
+        maxWidth="sm"
+      >
         <DialogTitle>Edit Tag</DialogTitle>
         <DialogContent>
           <TextField

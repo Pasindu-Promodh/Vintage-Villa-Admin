@@ -59,4 +59,8 @@ export interface Booking {
     endDate: string;
     reason?: string;
     createdAt: string;
+    // "all" = blocks every room; a specific room id = blocks only that room.
+    // Omitted on older records, which are treated as "all" for backward compatibility.
+    roomId?: string;
+    roomTitle?: string;
   }
