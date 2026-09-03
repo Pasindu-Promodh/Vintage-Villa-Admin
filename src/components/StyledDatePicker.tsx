@@ -186,7 +186,7 @@ const StyledDatePicker: React.FC<StyledDatePickerProps> = ({
                         left: "50%",
                         transform: "translateX(-50%)",
                         width: 8,
-                        height: 2,
+                        // height: 0,
                         backgroundColor: isBooked ? "#c62828" : "#1976d2",
                       }}
                     />
