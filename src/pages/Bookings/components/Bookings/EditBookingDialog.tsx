@@ -15,7 +15,7 @@ import {
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { format } from "date-fns";
 import InputAdornment from "@mui/material/InputAdornment";
-import StyledDatePicker from "../../../../components/StyledDatePicker";
+import StyledDateRangePicker from "../../../../components/StyledDateRangePicker";
 import { toLocalDateOnly } from "../../../../utils/dateUtils";
 
 interface EditBookingDialogProps {
@@ -157,49 +157,26 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
               </Grid>
 
               {/* Dates */}
-              <Grid item xs={12} sm={6}>
-                <StyledDatePicker
-                  label="Check-in Date"
-                  value={
+              <Grid item xs={12}>
+                <StyledDateRangePicker
+                  startLabel="Check-in"
+                  endLabel="Check-out"
+                  value={[
                     editForm.checkInDate
                       ? toLocalDateOnly(editForm.checkInDate)
-                      : null
-                  }
-                  onChange={(newValue) => {
-                    setEditForm({
-                      ...editForm,
-                      checkInDate: newValue
-                        ? format(newValue, "yyyy-MM-dd")
-                        : "",
-                    });
-                  }}
-                  bookedDates={bookedDates}
-                  allowClear={false}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <StyledDatePicker
-                  label="Check-out Date"
-                  value={
+                      : null,
                     editForm.checkOutDate
                       ? toLocalDateOnly(editForm.checkOutDate)
-                      : null
-                  }
-                  minDate={
-                    editForm.checkInDate
-                      ? toLocalDateOnly(editForm.checkInDate)
-                      : undefined
-                  }
-                  onChange={(newValue) => {
+                      : null,
+                  ]}
+                  onChange={([start, end]) => {
                     setEditForm({
                       ...editForm,
-                      checkOutDate: newValue
-                        ? format(newValue, "yyyy-MM-dd")
-                        : "",
+                      checkInDate: start ? format(start, "yyyy-MM-dd") : "",
+                      checkOutDate: end ? format(end, "yyyy-MM-dd") : "",
                     });
                   }}
                   bookedDates={bookedDates}
-                  allowClear={false}
                 />
               </Grid>
 

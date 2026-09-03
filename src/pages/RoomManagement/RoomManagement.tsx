@@ -361,7 +361,7 @@ function RoomManagement() {
     >
       <DashboardHeader title="Room Management" />
 
-      <Box sx={{ px: isMobile ? 1.5 : 3 }}>
+      <Box sx={{ px: isMobile ? 1.5 : 2 }}>
       {/* Header */}
       <Box
         display="flex"

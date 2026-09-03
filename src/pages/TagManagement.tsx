@@ -165,10 +165,10 @@ function TagManagement() {
   };
 
   return (
-    <Container disableGutters={isMobile}>
+    <Container maxWidth={false} disableGutters sx={{ width: "100%" }}>
       <DashboardHeader title="Tag Management" />
 
-      <Box sx={{ px: isMobile ? 1.5 : 0 }}>
+      <Box sx={{ px: isMobile ? 1.5 : 2 }}>
       <Box mb={isMobile ? 2 : 4}>
         <Typography variant="body1" mb={isMobile ? 2 : 3} color="text.secondary">
           Create and manage tags that can be used for your images. These tags

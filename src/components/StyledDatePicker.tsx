@@ -3,7 +3,9 @@ import {
   Box,
   Button,
   IconButton,
-  Popover,
+  Dialog,
+  DialogContent,
+  DialogActions,
   Typography,
   useTheme,
   useMediaQuery,
@@ -25,18 +27,18 @@ interface StyledDatePickerProps {
   minDate?: Date;
   allowClear?: boolean;
   fullWidth?: boolean;
-  /** Color used for the selected-day highlight. Defaults to the site's brand green. */
+  /** Background color used for the selected-day highlight only - the date number itself keeps its normal color. */
   selectionColor?: string;
   /** Show a "Today" quick-select button above the calendar. */
   showTodayShortcut?: boolean;
 }
 
 /**
- * A single-date field styled to match the booking calendar used on the
- * customer-facing site: click to open a small calendar, with booked dates
- * shown in red, past dates greyed out, and today marked with a small dot.
- * Independent of any other field, so a start date can be picked without
- * forcing an end date (and vice versa) - unlike a locked range picker.
+ * A single-date field styled to match the booking calendar on the
+ * customer-facing site: click to open a calendar in a dialog, with booked
+ * dates shown in red, past dates greyed out, and today marked with a
+ * small dash. Uses a Dialog (not a Popover) so sizing is always reliable
+ * on every screen width instead of fighting anchor-based cropping.
  */
 const StyledDatePicker: React.FC<StyledDatePickerProps> = ({
   label,
@@ -51,7 +53,7 @@ const StyledDatePicker: React.FC<StyledDatePickerProps> = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const [anchorEl, setAnchorEl] = React.useState<HTMLElement | null>(null);
+  const [open, setOpen] = React.useState(false);
 
   const today = startOfDay(new Date());
 
@@ -61,7 +63,7 @@ const StyledDatePicker: React.FC<StyledDatePickerProps> = ({
         variant="outlined"
         size="small"
         startIcon={<CalendarTodayIcon fontSize="small" />}
-        onClick={(e) => setAnchorEl(e.currentTarget)}
+        onClick={() => setOpen(true)}
         fullWidth={fullWidth}
         sx={{ justifyContent: "flex-start", textTransform: "none", minWidth: 0 }}
       >
@@ -74,31 +76,63 @@ const StyledDatePicker: React.FC<StyledDatePickerProps> = ({
           <ClearIcon fontSize="small" />
         </IconButton>
       )}
-      <Popover
-        open={Boolean(anchorEl)}
-        anchorEl={anchorEl}
-        onClose={() => setAnchorEl(null)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        fullScreen={isMobile}
+        maxWidth="xs"
+        fullWidth={!isMobile}
       >
-        <Box
+        <DialogContent
           sx={{
-            p: 1,
-            maxWidth: "calc(100vw - 32px)",
+            p: isMobile ? 1 : 2,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            overflowX: "hidden",
             "& .rdrCalendarWrapper": {
-              fontSize: 14,
-              ...(isMobile && { width: "100%" }),
+              fontSize: isMobile ? 12 : 14,
+              width: "100%",
+              maxWidth: "100%",
+              boxSizing: "border-box",
             },
+            "& .rdrMonth": {
+              width: "100%",
+              boxSizing: "border-box",
+              padding: isMobile ? 0 : undefined,
+            },
+            "& .rdrWeekDays, & .rdrDays": {
+              width: "100%",
+              boxSizing: "border-box",
+            },
+            // The library draws its own "today" marker by default;
+            // hide it since we render our own below.
+            "& .rdrDayToday .rdrDayNumber:after": { display: "none" },
           }}
         >
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1, alignSelf: "flex-start" }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Box component="span" sx={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", backgroundColor: "#ffa196", border: "1px solid #c62828" }} />
+              Booked / unavailable
+            </Box>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Box component="span" sx={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", backgroundColor: "#eeeeee", border: "1px solid #9e9e9e" }} />
+              Past date
+            </Box>
+          </Typography>
           {showTodayShortcut && (
             <Button
               size="small"
               variant="text"
               onClick={() => {
                 onChange(new Date());
-                setAnchorEl(null);
+                setOpen(false);
               }}
-              sx={{ mb: 0.5, textTransform: "none" }}
+              sx={{ mb: 0.5, textTransform: "none", alignSelf: "flex-start" }}
             >
               Set to Today
             </Button>
@@ -107,7 +141,7 @@ const StyledDatePicker: React.FC<StyledDatePickerProps> = ({
             date={value ?? new Date()}
             onChange={(date: Date) => {
               onChange(date);
-              setAnchorEl(null);
+              setOpen(false);
             }}
             minDate={minDate}
             color={selectionColor}
@@ -119,7 +153,7 @@ const StyledDatePicker: React.FC<StyledDatePickerProps> = ({
               const isToday = isSameDay(date, today);
 
               let backgroundColor: string | undefined;
-              let color: string | undefined;
+              let color: string = theme.palette.text.primary;
 
               if (isBooked) {
                 backgroundColor = "#ffa196";
@@ -148,12 +182,11 @@ const StyledDatePicker: React.FC<StyledDatePickerProps> = ({
                     <span
                       style={{
                         position: "absolute",
-                        bottom: 2,
+                        bottom: 3,
                         left: "50%",
                         transform: "translateX(-50%)",
-                        width: 4,
-                        height: 4,
-                        borderRadius: "50%",
+                        width: 8,
+                        height: 2,
                         backgroundColor: isBooked ? "#c62828" : "#1976d2",
                       }}
                     />
@@ -162,8 +195,13 @@ const StyledDatePicker: React.FC<StyledDatePickerProps> = ({
               );
             }}
           />
-        </Box>
-      </Popover>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)} size="small">
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

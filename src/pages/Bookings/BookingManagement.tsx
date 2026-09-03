@@ -66,6 +66,7 @@ import EmailIcon from "@mui/icons-material/Email";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import TableChartIcon from "@mui/icons-material/TableChart";
+import ClearIcon from "@mui/icons-material/Clear";
 import AddIcon from "@mui/icons-material/Add";
 
 // Local Component Imports
@@ -210,6 +211,13 @@ const BookingManagement: React.FC = () => {
       });
     }
 
+    // Sort by start date, closest first
+    result.sort(
+      (a, b) =>
+        toLocalDateOnly(a.checkInDate).getTime() -
+        toLocalDateOnly(b.checkInDate).getTime()
+    );
+
     setFilteredBookings(result);
   }, [bookings, statusFilter, roomFilter, rooms, searchQuery, dateFilter]);
 
@@ -243,6 +251,13 @@ const BookingManagement: React.FC = () => {
         );
       });
     }
+
+    // Sort by start date, closest first
+    result.sort(
+      (a, b) =>
+        toLocalDateOnly(a.startDate).getTime() -
+        toLocalDateOnly(b.startDate).getTime()
+    );
 
     setFilteredUnavailableDates(result);
   }, [unavailableDates, roomFilter, dateFilter]);
@@ -557,8 +572,8 @@ const BookingManagement: React.FC = () => {
     *Regarding Your Booking*:
     Booking ID: ${booking.id}
     Room: ${booking.roomTitle}
-    Check-in: ${new Date(booking.checkInDate).toLocaleDateString()}
-    Check-out: ${new Date(booking.checkOutDate).toLocaleDateString()}
+    Check-in: ${formatDate(booking.checkInDate)}
+    Check-out: ${formatDate(booking.checkOutDate)}
     Status: ${booking.status.toUpperCase()}
     
     Need assistance? Feel free to reply to this message.
@@ -581,8 +596,8 @@ const BookingManagement: React.FC = () => {
         message: `
         <h2>Booking Information</h2>
         <p>Room: ${booking.roomTitle}</p>
-        <p>Check-in: ${new Date(booking.checkInDate).toLocaleDateString()}</p>
-        <p>Check-out: ${new Date(booking.checkOutDate).toLocaleDateString()}</p>
+        <p>Check-in: ${formatDate(booking.checkInDate)}</p>
+        <p>Check-out: ${formatDate(booking.checkOutDate)}</p>
         <p>Status: ${booking.status.toUpperCase()}</p>
         <p>If you have any questions, please reply to this email.</p>
       `,
@@ -606,8 +621,8 @@ const BookingManagement: React.FC = () => {
   
   *Booking Details:*
   Room: ${booking.roomTitle}
-  Check-in: ${new Date(booking.checkInDate).toLocaleDateString()}
-  Check-out: ${new Date(booking.checkOutDate).toLocaleDateString()}
+  Check-in: ${formatDate(booking.checkInDate)}
+  Check-out: ${formatDate(booking.checkOutDate)}
   Guests: ${booking.headCount}
   
   *Included Meals:*
@@ -685,11 +700,7 @@ const BookingManagement: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-GB", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return format(toLocalDateOnly(dateString), "dd MMM yyyy");
   };
 
   const formatCalendarData = (
@@ -777,7 +788,7 @@ const BookingManagement: React.FC = () => {
   });
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 0, mb: 4 }} disableGutters={isMobile}>
+    <Container maxWidth={false} disableGutters sx={{ mt: 0, mb: 4, width: "100%" }}>
       <DashboardHeader
         title="Booking Management"
         actions={
@@ -789,7 +800,7 @@ const BookingManagement: React.FC = () => {
         }
       />
 
-      <Box sx={{ px: isMobile ? 1.5 : 0 }}>
+      <Box sx={{ px: isMobile ? 1.5 : 2 }}>
         {/* Filter and Search */}
         <Paper sx={{ p: isMobile ? 1.5 : 2, mb: 3 }}>
           <Grid container spacing={1} alignItems="center">

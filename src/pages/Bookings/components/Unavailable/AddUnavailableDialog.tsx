@@ -12,7 +12,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { Room } from "../../../../components/Types";
-import StyledDatePicker from "../../../../components/StyledDatePicker";
+import StyledDateRangePicker from "../../../../components/StyledDateRangePicker";
 
 interface UnavailableDatesDialogProps {
   open: boolean;
@@ -89,27 +89,13 @@ const UnavailableDatesDialog: React.FC<UnavailableDatesDialogProps> = ({
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <StyledDatePicker
-              label="Start Date"
-              value={startDate}
-              onChange={(newValue) =>
-                onStartEndDateChange([newValue, endDate])
-              }
+          <Grid item xs={12}>
+            <StyledDateRangePicker
+              startLabel="Start Date"
+              endLabel="End Date"
+              value={[startDate, endDate]}
+              onChange={onStartEndDateChange}
               bookedDates={bookedDates}
-              allowClear={false}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <StyledDatePicker
-              label="End Date"
-              value={endDate}
-              minDate={startDate ?? undefined}
-              onChange={(newValue) =>
-                onStartEndDateChange([startDate, newValue])
-              }
-              bookedDates={bookedDates}
-              allowClear={false}
             />
           </Grid>
           <Grid item xs={12}>

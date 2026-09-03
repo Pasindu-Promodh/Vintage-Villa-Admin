@@ -12,7 +12,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { Room, UnavailableDates } from "../../../../components/Types";
-import StyledDatePicker from "../../../../components/StyledDatePicker";
+import StyledDateRangePicker from "../../../../components/StyledDateRangePicker";
 import { toLocalDateOnly } from "../../../../utils/dateUtils";
 import { format } from "date-fns";
 
@@ -97,35 +97,22 @@ const EditUnavailableDateDialog: React.FC<EditUnavailableDateDialogProps> = ({
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <StyledDatePicker
-              label="Start Date"
-              value={editForm.startDate ? toLocalDateOnly(editForm.startDate) : null}
-              onChange={(newValue) =>
+          <Grid item xs={12}>
+            <StyledDateRangePicker
+              startLabel="Start Date"
+              endLabel="End Date"
+              value={[
+                editForm.startDate ? toLocalDateOnly(editForm.startDate) : null,
+                editForm.endDate ? toLocalDateOnly(editForm.endDate) : null,
+              ]}
+              onChange={([start, end]) =>
                 setEditForm({
                   ...editForm,
-                  startDate: newValue ? format(newValue, "yyyy-MM-dd") : undefined,
+                  startDate: start ? format(start, "yyyy-MM-dd") : undefined,
+                  endDate: end ? format(end, "yyyy-MM-dd") : undefined,
                 })
               }
               bookedDates={bookedDates}
-              allowClear={false}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <StyledDatePicker
-              label="End Date"
-              value={editForm.endDate ? toLocalDateOnly(editForm.endDate) : null}
-              minDate={
-                editForm.startDate ? toLocalDateOnly(editForm.startDate) : undefined
-              }
-              onChange={(newValue) =>
-                setEditForm({
-                  ...editForm,
-                  endDate: newValue ? format(newValue, "yyyy-MM-dd") : undefined,
-                })
-              }
-              bookedDates={bookedDates}
-              allowClear={false}
             />
           </Grid>
           <Grid item xs={12}>
