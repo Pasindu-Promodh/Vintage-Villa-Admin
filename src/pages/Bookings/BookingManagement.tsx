@@ -66,6 +66,7 @@ import EmailIcon from "@mui/icons-material/Email";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import TableChartIcon from "@mui/icons-material/TableChart";
+import ClearIcon from "@mui/icons-material/Clear";
 import AddIcon from "@mui/icons-material/Add";
 
 // Local Component Imports
@@ -588,18 +589,17 @@ const BookingManagement: React.FC = () => {
 
   const sendEmail = async (booking: Booking) => {
     try {
-      const sendCustomerEmail = httpsCallable(functions, "sendCustomerEmail");
-      await sendCustomerEmail({
+      // Reuses the working sendStatusChangeEmail function (sending a
+      // "status update" email using the booking's current status doubles
+      // as a general booking-info resend). The previous version called a
+      // "sendCustomerEmail" Cloud Function that was never implemented.
+      const sendStatusChangeEmail = httpsCallable(
+        functions,
+        "sendStatusChangeEmail"
+      );
+      await sendStatusChangeEmail({
         bookingId: booking.id,
-        subject: `Update on your booking #${booking.id}`,
-        message: `
-        <h2>Booking Information</h2>
-        <p>Room: ${booking.roomTitle}</p>
-        <p>Check-in: ${formatDate(booking.checkInDate)}</p>
-        <p>Check-out: ${formatDate(booking.checkOutDate)}</p>
-        <p>Status: ${booking.status.toUpperCase()}</p>
-        <p>If you have any questions, please reply to this email.</p>
-      `,
+        newStatus: booking.status,
       });
       alert("Email sent successfully!");
     } catch (err) {
