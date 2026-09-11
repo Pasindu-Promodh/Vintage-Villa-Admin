@@ -407,6 +407,24 @@ const BookingManagement: React.FC = () => {
 
     // Check if status has changed
     const statusChanged = editForm.status !== selectedBooking.status;
+    const method =
+      editForm.preferredContactMethod ||
+      selectedBooking.preferredContactMethod ||
+      "whatsapp";
+    const includesEmail = method === "email" || method === "both";
+    const includesWhatsapp = method === "whatsapp" || method === "both";
+    const willOpenWhatsApp =
+      statusChanged &&
+      !!editForm.status &&
+      includesWhatsapp &&
+      !!selectedBooking.customerPhone;
+
+    // Open the tab now, synchronously, while this is still a direct result
+    // of the Save click - browsers block window.open() once it happens
+    // after an `await` (see updateDoc below), since by then the click's
+    // "user gesture" has expired. We navigate this already-open tab to the
+    // real wa.me URL (or close it) once we know how the save went.
+    const whatsappTab = willOpenWhatsApp ? window.open("", "_blank") : null;
 
     // Never write the document id or the original createdAt back into the
     // document body.
@@ -432,13 +450,6 @@ const BookingManagement: React.FC = () => {
       // WhatsApp opens a wa.me link the same way it always has (that part
       // can't be automated server-side; it goes to the customer, not us).
       if (statusChanged && editForm.status) {
-        const method =
-          editForm.preferredContactMethod ||
-          selectedBooking.preferredContactMethod ||
-          "whatsapp";
-        const includesEmail = method === "email" || method === "both";
-        const includesWhatsapp = method === "whatsapp" || method === "both";
-
         if (includesEmail) {
           sendStatusChangeEmailSilently(
             selectedBooking.id,
@@ -446,14 +457,17 @@ const BookingManagement: React.FC = () => {
             emailNote
           );
         }
-        if (includesWhatsapp && selectedBooking.customerPhone) {
-          sendStatusWhatsApp(selectedBooking, editForm.status);
+        if (whatsappTab) {
+          sendStatusWhatsApp(selectedBooking, editForm.status, whatsappTab);
         }
+      } else {
+        whatsappTab?.close();
       }
       setEmailNote("");
     } catch (err) {
       console.error("Error updating booking:", err);
       setError("Failed to update booking. Please try again.");
+      whatsappTab?.close();
     }
   };
 
@@ -671,9 +685,18 @@ const BookingManagement: React.FC = () => {
     }
   };
 
-  const sendStatusWhatsApp = (booking: Booking, newStatus: string) => {
+  // `targetWindow` is an already-open tab (see handleSaveBooking) to
+  // navigate instead of opening a new one - calling window.open() after an
+  // `await` gets silently blocked by the browser's popup blocker, since
+  // it's no longer a direct result of the click that triggered this.
+  const sendStatusWhatsApp = (
+    booking: Booking,
+    newStatus: string,
+    targetWindow?: Window | null
+  ) => {
     if (!booking.customerPhone) {
       setError("This booking has no phone number on file.");
+      targetWindow?.close();
       return;
     }
 
@@ -716,7 +739,11 @@ const BookingManagement: React.FC = () => {
       ""
     )}?text=${encodeURIComponent(message)}`;
 
-    window.open(whatsappURL, "_blank");
+    if (targetWindow) {
+      targetWindow.location.href = whatsappURL;
+    } else {
+      window.open(whatsappURL, "_blank");
+    }
   };
 
   // Utility Functions
