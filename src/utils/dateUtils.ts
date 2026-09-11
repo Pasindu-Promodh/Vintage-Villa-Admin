@@ -10,8 +10,10 @@
  * builds a Date in the browser's local timezone at local midnight, so
  * it always lines up with how the calendar itself renders local days.
  */
-export const toLocalDateOnly = (dateString: string): Date => {
-  const datePart = dateString.split("T")[0]; // "yyyy-MM-dd"
+export const toLocalDateOnly = (dateString?: string | null): Date => {
+  if (!dateString) return new Date(0);
+  const datePart = String(dateString).split("T")[0]; // "yyyy-MM-dd"
   const [year, month, day] = datePart.split("-").map(Number);
+  if (!year) return new Date(0);
   return new Date(year, (month || 1) - 1, day || 1);
 };

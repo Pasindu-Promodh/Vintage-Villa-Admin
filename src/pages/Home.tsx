@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { auth } from "../config/firebaseConfig";
+import { auth, db } from "../config/firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
 import {
   GoogleAuthProvider,
   signInWithEmailAndPassword,
@@ -31,16 +32,27 @@ function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [user, setUser] = useState<any>(null);
+  // null = unknown/checking, true = allow-listed admin, false = not an admin
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   useEffect(() => {
     // Set up an auth state observer that persists across page navigation
-    const unsubscribe = auth.onAuthStateChanged((currentUser: any) => {
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser: any) => {
+      setUser(currentUser || null);
+
       if (currentUser) {
-        setUser(currentUser);
+        setIsAdmin(null);
+        try {
+          const snap = await getDoc(doc(db, "admins", currentUser.uid));
+          setIsAdmin(snap.exists());
+        } catch (err) {
+          console.error("Admin check failed:", err);
+          setIsAdmin(false);
+        }
       } else {
-        setUser(null);
+        setIsAdmin(null);
       }
     });
 
@@ -104,9 +116,71 @@ function Home() {
     }
   ];
 
+  if (user && isAdmin === null) {
+    return (
+      <Container maxWidth="lg" sx={{ px: isMobile ? 2 : 3 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: "80vh",
+          }}
+        >
+          <Typography variant="body1" color="text.secondary">
+            Checking access…
+          </Typography>
+        </Box>
+      </Container>
+    );
+  }
+
+  if (user && isAdmin === false) {
+    return (
+      <Container maxWidth="lg" sx={{ px: isMobile ? 2 : 3 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: "80vh",
+          }}
+        >
+          <Paper
+            elevation={3}
+            sx={{
+              p: isMobile ? 3 : 4,
+              width: "100%",
+              maxWidth: 420,
+              borderRadius: 2,
+              textAlign: "center",
+            }}
+          >
+            <Typography variant={isMobile ? "h6" : "h5"} gutterBottom>
+              Access denied
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              The account <strong>{user.email}</strong> is not authorised to use
+              the admin dashboard. Contact the site administrator if you believe
+              this is a mistake.
+            </Typography>
+            <Button
+              onClick={logout}
+              variant="outlined"
+              color="secondary"
+              startIcon={<LogoutIcon />}
+            >
+              Sign out
+            </Button>
+          </Paper>
+        </Box>
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth="lg" sx={{ px: isMobile ? 2 : 3 }}>
-      {user ? (
+      {user && isAdmin ? (
         <Box sx={{ mt: isMobile ? 2 : 4 }}>
           <Box
             display="flex"

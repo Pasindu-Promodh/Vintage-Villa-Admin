@@ -62,11 +62,11 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import EmailIcon from "@mui/icons-material/Email";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import TableChartIcon from "@mui/icons-material/TableChart";
-import ClearIcon from "@mui/icons-material/Clear";
 import AddIcon from "@mui/icons-material/Add";
 
 // Local Component Imports
@@ -174,13 +174,13 @@ const BookingManagement: React.FC = () => {
 
     // Filter by search query (name, email, room)
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase();
       result = result.filter(
         (booking) =>
-          booking.customerName.toLowerCase().includes(query) ||
-          booking.customerEmail.toLowerCase().includes(query) ||
-          booking.roomTitle.toLowerCase().includes(query) ||
-          booking.id.toLowerCase().includes(query)
+          (booking.customerName || "").toLowerCase().includes(q) ||
+          (booking.customerEmail || "").toLowerCase().includes(q) ||
+          (booking.roomTitle || "").toLowerCase().includes(q) ||
+          (booking.id || "").toLowerCase().includes(q)
       );
     }
 
@@ -409,15 +409,19 @@ const BookingManagement: React.FC = () => {
     // Check if status has changed
     const statusChanged = editForm.status !== selectedBooking.status;
 
+    // Never write the document id or the original createdAt back into the
+    // document body.
+    const { id: _id, createdAt: _createdAt, ...updates } = editForm as any;
+
     try {
       const bookingRef = doc(db, "bookings", selectedBooking.id);
-      await updateDoc(bookingRef, editForm);
+      await updateDoc(bookingRef, updates);
 
       // Update local state
       setBookings((prevBookings) =>
         prevBookings.map((booking) =>
           booking.id === selectedBooking.id
-            ? { ...booking, ...editForm }
+            ? { ...booking, ...updates }
             : booking
         )
       );
@@ -451,6 +455,22 @@ const BookingManagement: React.FC = () => {
     setConfirmDeleteOpen(true);
   };
 
+  // Rebuilds the public, PII-free "booked_ranges" mirror from every
+  // currently-confirmed booking. Run once after deploying the new rules /
+  // Cloud Functions; safe to re-run any time.
+  const handleSyncAvailability = async () => {
+    try {
+      const backfill = httpsCallable(functions, "backfillBookedRanges");
+      const res: any = await backfill();
+      alert(
+        `Public availability synced (${res?.data?.synced ?? 0} confirmed booking(s)).`
+      );
+    } catch (err) {
+      console.error("Error syncing availability:", err);
+      alert("Failed to sync public availability. Please try again.");
+    }
+  };
+
   const confirmDeleteBooking = async () => {
     if (!selectedBooking) return;
 
@@ -472,6 +492,11 @@ const BookingManagement: React.FC = () => {
   // Unavailable Dates Management Functions
   const handleAddUnavailableDate = async () => {
     if (!newUnavailableDate.startDate || !newUnavailableDate.endDate) return;
+
+    if (newUnavailableDate.endDate < newUnavailableDate.startDate) {
+      setError("End date must be on or after the start date.");
+      return;
+    }
 
     try {
       const unavailableDatesCollection = collection(db, "unavailable_dates");
@@ -568,14 +593,19 @@ const BookingManagement: React.FC = () => {
 
   // Communication Functions
   const sendWhatsApp = (booking: Booking) => {
+    if (!booking.customerPhone) {
+      setError("This booking has no phone number on file.");
+      return;
+    }
+
     const message = `
     *Regarding Your Booking*:
     Booking ID: ${booking.id}
     Room: ${booking.roomTitle}
     Check-in: ${formatDate(booking.checkInDate)}
     Check-out: ${formatDate(booking.checkOutDate)}
-    Status: ${booking.status.toUpperCase()}
-    
+    Status: ${(booking.status || "").toUpperCase()}
+
     Need assistance? Feel free to reply to this message.
   `;
 
@@ -609,30 +639,41 @@ const BookingManagement: React.FC = () => {
   };
 
   const sendStatusWhatsApp = (booking: Booking, newStatus: string) => {
+    if (!booking.customerPhone) {
+      setError("This booking has no phone number on file.");
+      return;
+    }
+
+    const meals = booking.mealOptions || {
+      breakfast: false,
+      lunch: false,
+      dinner: false,
+    };
+
     const message = `
   *Vintage Villa - Booking Status Update*
-  
+
   Dear ${booking.customerName},
-  
+
   Your booking #${
     booking.id
-  } at Vintage Villa has been updated to: *${newStatus.toUpperCase()}*
-  
+  } at Vintage Villa has been updated to: *${(newStatus || "").toUpperCase()}*
+
   *Booking Details:*
   Room: ${booking.roomTitle}
   Check-in: ${formatDate(booking.checkInDate)}
   Check-out: ${formatDate(booking.checkOutDate)}
   Guests: ${booking.headCount}
-  
+
   *Included Meals:*
-  Breakfast: ${booking.mealOptions.breakfast ? "Yes" : "No"}
-  Lunch: ${booking.mealOptions.lunch ? "Yes" : "No"} 
-  Dinner: ${booking.mealOptions.dinner ? "Yes" : "No"}
-  
-  Total Amount: $${booking.totalPrice.toFixed(2)}
-  
+  Breakfast: ${meals.breakfast ? "Yes" : "No"}
+  Lunch: ${meals.lunch ? "Yes" : "No"}
+  Dinner: ${meals.dinner ? "Yes" : "No"}
+
+  Total Amount: $${(booking.totalPrice ?? 0).toFixed(2)}
+
   If you need to make any changes to your reservation or have questions, please reply to this message or contact our front desk.
-  
+
   Thank you for choosing Vintage Villa!
   We look forward to welcoming you.
 `;
@@ -791,11 +832,22 @@ const BookingManagement: React.FC = () => {
       <DashboardHeader
         title="Booking Management"
         actions={
-          <Tooltip title="Refresh Bookings">
-            <IconButton color="primary" onClick={fetchBookings} size="small">
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
+          <Box sx={{ display: "flex", gap: 0.5 }}>
+            <Tooltip title="Rebuild public availability from confirmed bookings">
+              <IconButton
+                color="primary"
+                onClick={handleSyncAvailability}
+                size="small"
+              >
+                <EventAvailableIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Refresh Bookings">
+              <IconButton color="primary" onClick={fetchBookings} size="small">
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
         }
       />
 
@@ -874,7 +926,7 @@ const BookingManagement: React.FC = () => {
             >
               <Tooltip title="Toggle Calendar View">
                 <IconButton
-                  color={calendarView ? "primary" : "default"}
+                  color={isCalendar ? "primary" : "default"}
                   onClick={() => setisCalendar(!isCalendar)}
                 >
                   {isCalendar ? <TableChartIcon /> : <CalendarTodayIcon />}
@@ -955,8 +1007,8 @@ const BookingManagement: React.FC = () => {
                         color="text.secondary"
                         sx={{ mb: 1 }}
                       >
-                        ${booking.totalPrice.toFixed(2)} · ID{" "}
-                        {booking.id.substring(0, 8)}...
+                        ${(booking.totalPrice ?? 0).toFixed(2)} · ID{" "}
+                        {(booking.id || "").substring(0, 8)}...
                       </Typography>
                       <Divider sx={{ mb: 1 }} />
                       <Box
@@ -1043,7 +1095,7 @@ const BookingManagement: React.FC = () => {
                   <TableBody>
                     {filteredBookings.map((booking) => (
                       <TableRow key={booking.id} hover>
-                        <TableCell>{booking.id.substring(0, 8)}...</TableCell>
+                        <TableCell>{(booking.id || "").substring(0, 8)}...</TableCell>
                         <TableCell>{booking.roomTitle}</TableCell>
                         <TableCell>
                           <Tooltip title={booking.customerEmail}>
@@ -1063,7 +1115,7 @@ const BookingManagement: React.FC = () => {
                             size="small"
                           />
                         </TableCell>
-                        <TableCell>${booking.totalPrice.toFixed(2)}</TableCell>
+                        <TableCell>${(booking.totalPrice ?? 0).toFixed(2)}</TableCell>
                         <TableCell>
                           <Tooltip title="View Details">
                             <IconButton

@@ -184,29 +184,31 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
               <Grid item xs={12} sm={4}>
                 <TextField
                   label="Head Count"
-                  value={editForm.headCount || ""}
-                  onChange={(e) =>
+                  value={editForm.headCount ?? ""}
+                  onChange={(e) => {
+                    const n = parseInt(e.target.value, 10);
                     setEditForm({
                       ...editForm,
-                      headCount: parseInt(e.target.value),
-                    })
-                  }
+                      headCount: Number.isNaN(n) ? 1 : Math.max(1, n),
+                    });
+                  }}
                   fullWidth
                   type="number"
-                  InputProps={{ inputProps: { min: 1, max: 4 } }}
+                  InputProps={{ inputProps: { min: 1 } }}
                   size={isMobile ? "small" : "medium"}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
                 <TextField
                   label="Discount"
-                  value={editForm.discount || ""}
-                  onChange={(e) =>
+                  value={editForm.discount ?? ""}
+                  onChange={(e) => {
+                    const n = parseFloat(e.target.value);
                     setEditForm({
                       ...editForm,
-                      discount: parseFloat(e.target.value),
-                    })
-                  }
+                      discount: Number.isNaN(n) ? 0 : Math.max(0, n),
+                    });
+                  }}
                   fullWidth
                   type="number"
                   InputProps={{
@@ -221,13 +223,14 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
               <Grid item xs={12} sm={4}>
                 <TextField
                   label="Total Price"
-                  value={editForm.totalPrice || ""}
-                  onChange={(e) =>
+                  value={editForm.totalPrice ?? ""}
+                  onChange={(e) => {
+                    const n = parseFloat(e.target.value);
                     setEditForm({
                       ...editForm,
-                      totalPrice: parseFloat(e.target.value),
-                    })
-                  }
+                      totalPrice: Number.isNaN(n) ? 0 : Math.max(0, n),
+                    });
+                  }}
                   fullWidth
                   type="number"
                   InputProps={{
