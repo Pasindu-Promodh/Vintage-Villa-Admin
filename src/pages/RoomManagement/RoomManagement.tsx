@@ -26,10 +26,11 @@ import AddRoomDialog from "./components/AddRoomDialog";
 import EditRoomDialog from "./components/EditRoomDialog";
 import DeleteConfirmationDialog from "./components/DeleteConfirmationDialog";
 import PricingSettingsCard from "./components/PricingSettingsCard";
+import GeneralSettingsCard from "./components/GeneralSettingsCard";
 import AlertMessage from "./components/AlertMessage";
 import DashboardHeader from "../../components/DashboardHeader";
 import { enqueueSnackbar } from "notistack";
-import { PricingSettings, Room } from "../../components/Types";
+import { GeneralSettings, PricingSettings, Room } from "../../components/Types";
 
 // Default values
 const defaultFormData = {
@@ -51,6 +52,11 @@ const defaultPricingSettings = {
   lastUpdated: Date.now(),
 };
 
+const defaultGeneralSettings: GeneralSettings = {
+  reviewUrl: "",
+  lastUpdated: 0,
+};
+
 function RoomManagement() {
   // Theme for responsive design
   const theme = useTheme();
@@ -68,18 +74,25 @@ function RoomManagement() {
   });
   const [tempPricingSettings, setTempPricingSettings] =
     useState<PricingSettings>({ ...defaultPricingSettings });
+  const [generalSettings, setGeneralSettings] = useState<GeneralSettings>({
+    ...defaultGeneralSettings,
+  });
+  const [tempGeneralSettings, setTempGeneralSettings] =
+    useState<GeneralSettings>({ ...defaultGeneralSettings });
 
   // UI state
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditingPricing, setIsEditingPricing] = useState(false);
+  const [isEditingGeneral, setIsEditingGeneral] = useState(false);
   const [error, setError] = useState("");
 
   // Auth observer
   useEffect(() => {
     fetchRooms();
     fetchPricingSettings();
+    fetchGeneralSettings();
   }, []);
 
   // Data fetching functions
@@ -123,6 +136,23 @@ function RoomManagement() {
     } catch (err) {
       console.error("Error fetching pricing settings:", err);
       setError("Failed to load pricing settings. Please try again.");
+    }
+  };
+
+  const fetchGeneralSettings = async () => {
+    try {
+      const generalDoc = await getDoc(doc(db, "settings", "general"));
+
+      if (generalDoc.exists()) {
+        const data = generalDoc.data() as GeneralSettings;
+        setGeneralSettings(data);
+        setTempGeneralSettings(data);
+      }
+      // If it doesn't exist yet, just leave the defaults - it'll be
+      // created the first time the admin saves a review link.
+    } catch (err) {
+      console.error("Error fetching general settings:", err);
+      setError("Failed to load guest communication settings. Please try again.");
     }
   };
 
@@ -271,6 +301,41 @@ function RoomManagement() {
     }
   };
 
+  const saveGeneralSettings = async () => {
+    try {
+      const updatedSettings: GeneralSettings = {
+        reviewUrl: tempGeneralSettings.reviewUrl.trim(),
+        lastUpdated: Date.now(),
+      };
+
+      await setDoc(doc(db, "settings", "general"), updatedSettings);
+      setGeneralSettings(updatedSettings);
+      setIsEditingGeneral(false);
+      showToast("Guest communication settings updated successfully!", "success");
+    } catch (err) {
+      console.error("Error updating general settings:", err);
+      showToast(
+        "Failed to update guest communication settings. Please try again.",
+        "error"
+      );
+    }
+  };
+
+  const handleGeneralInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const { name, value } = e.target;
+    setTempGeneralSettings({
+      ...tempGeneralSettings,
+      [name]: value,
+    });
+  };
+
+  const cancelEditGeneral = () => {
+    setTempGeneralSettings(generalSettings);
+    setIsEditingGeneral(false);
+  };
+
   // Helper functions
   const handleEditRoom = (room: Room) => {
     setRoomToEdit(room);
@@ -400,6 +465,16 @@ function RoomManagement() {
         onCancel={cancelEditPricing}
         onEdit={() => setIsEditingPricing(true)}
         onChange={handlePricingInputChange}
+      />
+
+      <GeneralSettingsCard
+        generalSettings={generalSettings}
+        tempGeneralSettings={tempGeneralSettings}
+        isEditing={isEditingGeneral}
+        onSave={saveGeneralSettings}
+        onCancel={cancelEditGeneral}
+        onEdit={() => setIsEditingGeneral(true)}
+        onChange={handleGeneralInputChange}
       />
 
       {/* Room List */}

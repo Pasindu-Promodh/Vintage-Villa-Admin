@@ -100,7 +100,13 @@ const BookingDetailsDialog: React.FC<BookingDetailsDialogProps> = ({
           </Typography>
           <Typography variant="body1" sx={{ mb: 1 }}>
             <strong>Preferred Contact:</strong>{" "}
-            {booking.preferredContactMethod || "Not specified"}
+            {booking.preferredContactMethod === "both"
+              ? "Email & WhatsApp"
+              : booking.preferredContactMethod === "email"
+              ? "Email"
+              : booking.preferredContactMethod === "whatsapp"
+              ? "WhatsApp"
+              : "Not specified"}
           </Typography>
 
           <Divider sx={{ my: 1.5 }} />

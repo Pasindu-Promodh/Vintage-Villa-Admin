@@ -37,13 +37,16 @@ interface EditBookingDialogProps {
       lunch?: boolean;
       dinner?: boolean;
     };
-    preferredContactMethod?: "email" | "whatsapp";
+    preferredContactMethod?: "email" | "whatsapp" | "both";
   };
   setEditOpen: (open: boolean) => void;
   setEditForm: (form: any) => void;
   handleSaveEdit: () => void;
   /** Booked/unavailable dates for this booking's room, to highlight in red. */
   bookedDates?: Date[];
+  /** Optional note folded into the status-update email sent on save. */
+  emailNote: string;
+  setEmailNote: (note: string) => void;
 }
 
 const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
@@ -54,9 +57,31 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
   setEditForm,
   handleSaveEdit,
   bookedDates = [],
+  emailNote,
+  setEmailNote,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  const contactMethod = editForm.preferredContactMethod || "whatsapp";
+  const includesEmail = contactMethod === "email" || contactMethod === "both";
+  const includesWhatsapp =
+    contactMethod === "whatsapp" || contactMethod === "both";
+
+  const toggleContactMethod = (method: "email" | "whatsapp") => {
+    const nextEmail = method === "email" ? !includesEmail : includesEmail;
+    const nextWhatsapp =
+      method === "whatsapp" ? !includesWhatsapp : includesWhatsapp;
+
+    // Never allow leaving both unchecked.
+    if (!nextEmail && !nextWhatsapp) return;
+
+    setEditForm({
+      ...editForm,
+      preferredContactMethod:
+        nextEmail && nextWhatsapp ? "both" : nextEmail ? "email" : "whatsapp",
+    });
+  };
 
   return (
     <Dialog
@@ -288,35 +313,55 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
                 <Typography variant="subtitle2" gutterBottom>
                   Preferred Contact Method
                 </Typography>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                  Select one or both. Saving a status change notifies the
+                  customer on every method selected here.
+                </Typography>
                 <Grid container spacing={1}>
-                  {["Email", "WhatsApp"].map((method) => {
-                    const methodKey = method.toLowerCase() as
-                      | "email"
-                      | "whatsapp";
-                    return (
-                      <Grid item xs={6} key={method}>
-                        <Button
-                          variant={
-                            editForm.preferredContactMethod === methodKey
-                              ? "contained"
-                              : "outlined"
-                          }
-                          color="primary"
-                          fullWidth
-                          size={isMobile ? "small" : "medium"}
-                          onClick={() =>
-                            setEditForm({
-                              ...editForm,
-                              preferredContactMethod: methodKey,
-                            })
-                          }
-                        >
-                          {method}
-                        </Button>
-                      </Grid>
-                    );
-                  })}
+                  <Grid item xs={6}>
+                    <Button
+                      variant={includesEmail ? "contained" : "outlined"}
+                      color="primary"
+                      fullWidth
+                      size={isMobile ? "small" : "medium"}
+                      onClick={() => toggleContactMethod("email")}
+                    >
+                      Email
+                    </Button>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Button
+                      variant={includesWhatsapp ? "contained" : "outlined"}
+                      color="primary"
+                      fullWidth
+                      size={isMobile ? "small" : "medium"}
+                      onClick={() => toggleContactMethod("whatsapp")}
+                    >
+                      WhatsApp
+                    </Button>
+                  </Grid>
                 </Grid>
+              </Grid>
+
+              {/* Optional note for the status-update email, sent silently
+                  on save when Email is one of the selected methods above. */}
+              <Grid item xs={12}>
+                <TextField
+                  label="Note to include in status email (optional)"
+                  value={emailNote}
+                  onChange={(e) => setEmailNote(e.target.value)}
+                  fullWidth
+                  multiline
+                  rows={2}
+                  size={isMobile ? "small" : "medium"}
+                  placeholder="e.g. a reason for cancellation, or a personal welcome note"
+                  disabled={!includesEmail}
+                  helperText={
+                    includesEmail
+                      ? "Included in the automatic email if the status changes below."
+                      : "Select Email above to enable."
+                  }
+                />
               </Grid>
             </Grid>
           </DialogContent>

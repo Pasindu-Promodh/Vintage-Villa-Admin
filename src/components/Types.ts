@@ -7,7 +7,7 @@ export interface Booking {
     customerName: string;
     customerEmail: string;
     customerPhone: string;
-    preferredContactMethod: "whatsapp" | "email";
+    preferredContactMethod: "whatsapp" | "email" | "both";
     mealOptions: {
       breakfast: boolean;
       lunch: boolean;
@@ -50,6 +50,14 @@ export interface Booking {
     lunchPrice: number;
     dinnerPrice: number;
     discountRate: number;
+    lastUpdated: number;
+  }
+
+  // Guest-communication settings (settings/general), editable from the
+  // Room Management page. Currently just the review link shown in the
+  // "booking completed" email.
+  export interface GeneralSettings {
+    reviewUrl: string;
     lastUpdated: number;
   }
 

@@ -74,7 +74,6 @@ import EditBookingDialog from "./components/Bookings/EditBookingDialog";
 import ViewBookingDialog from "./components/Bookings/ViewBookingDialog";
 import EditUnavailableDateDialog from "./components/Unavailable/EditUnavailableDialog";
 import ConfirmDeleteDialog from "./components/Bookings/ConfirmDeleteDialog";
-import EmailConfirmationDialog from "./components/Bookings/EmailConfirmationDialog";
 import UnavailableDatesDialog from "./components/Unavailable/AddUnavailableDialog";
 
 // Type Imports
@@ -132,7 +131,6 @@ const BookingManagement: React.FC = () => {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [addUnavailableDateOpen, setAddUnavailableDateOpen] = useState(false);
   const [editUnavailableDateOpen, setEditUnavailableDateOpen] = useState(false);
-  const [confirmEmailOpen, setConfirmEmailOpen] = useState(false);
 
   // Filter and Search States
   const [statusFilter, setStatusFilter] = useState("all");
@@ -148,10 +146,10 @@ const BookingManagement: React.FC = () => {
   const [calendarView, setCalendarView] = useState<View>(Views.MONTH);
   const [isCalendar, setisCalendar] = useState(false);
 
-  // Email Confirmation States
-  const [emailConfirmationPending, setEmailConfirmationPending] =
-    useState(false);
-  const [emailMessage, setEmailMessage] = useState("");
+  // Optional note folded into the status-update email, edited inline in
+  // the Edit Booking dialog (no separate confirmation popup - the email
+  // itself now sends silently on save, per contact method below).
+  const [emailNote, setEmailNote] = useState("");
 
   // Loading and Error States
   const [loading, setLoading] = useState(true);
@@ -400,6 +398,7 @@ const BookingManagement: React.FC = () => {
       discount: booking.discount,
       totalPrice: booking.totalPrice,
     });
+    setEmailNote("");
     setEditOpen(true);
   };
 
@@ -428,22 +427,30 @@ const BookingManagement: React.FC = () => {
 
       setEditOpen(false);
 
-      // If status changed, send notification based on preferred contact method
+      // If status changed, notify the customer on every contact method
+      // they selected - email sends automatically in the background,
+      // WhatsApp opens a wa.me link the same way it always has (that part
+      // can't be automated server-side; it goes to the customer, not us).
       if (statusChanged && editForm.status) {
-        const preferredMethod = editForm.preferredContactMethod || "whatsapp";
+        const method =
+          editForm.preferredContactMethod ||
+          selectedBooking.preferredContactMethod ||
+          "whatsapp";
+        const includesEmail = method === "email" || method === "both";
+        const includesWhatsapp = method === "whatsapp" || method === "both";
 
-        if (preferredMethod === "email") {
-          // Show email confirmation dialog
-          setEmailConfirmationPending(true);
-          setConfirmEmailOpen(true);
-        } else if (
-          preferredMethod === "whatsapp" &&
-          selectedBooking.customerPhone
-        ) {
-          // Send WhatsApp notification
+        if (includesEmail) {
+          sendStatusChangeEmailSilently(
+            selectedBooking.id,
+            editForm.status,
+            emailNote
+          );
+        }
+        if (includesWhatsapp && selectedBooking.customerPhone) {
           sendStatusWhatsApp(selectedBooking, editForm.status);
         }
       }
+      setEmailNote("");
     } catch (err) {
       console.error("Error updating booking:", err);
       setError("Failed to update booking. Please try again.");
@@ -617,12 +624,38 @@ const BookingManagement: React.FC = () => {
     window.open(whatsappURL, "_blank");
   };
 
-  const sendEmail = async (booking: Booking) => {
+  // Calls the sendStatusChangeEmail Cloud Function. Used both for the
+  // automatic, silent send on a status change (no confirmation dialog -
+  // that's the point) and for the manual per-row "resend" action below.
+  const sendStatusChangeEmailSilently = async (
+    bookingId: string,
+    newStatus: string,
+    customMessage?: string
+  ) => {
     try {
-      // Reuses the working sendStatusChangeEmail function (sending a
-      // "status update" email using the booking's current status doubles
-      // as a general booking-info resend). The previous version called a
-      // "sendCustomerEmail" Cloud Function that was never implemented.
+      const sendStatusChangeEmail = httpsCallable(
+        functions,
+        "sendStatusChangeEmail"
+      );
+      await sendStatusChangeEmail({
+        bookingId,
+        newStatus,
+        customMessage: customMessage || undefined,
+      });
+    } catch (err) {
+      console.error("Error sending status update email:", err);
+      setError(
+        "The booking was saved, but the status email could not be sent. Use the row's Email button to resend it."
+      );
+    }
+  };
+
+  const sendEmail = async (booking: Booking) => {
+    // Reuses sendStatusChangeEmail (sending a "status update" email using
+    // the booking's current status doubles as a general booking-info
+    // resend). The previous version called a "sendCustomerEmail" Cloud
+    // Function that was never implemented.
+    try {
       const sendStatusChangeEmail = httpsCallable(
         functions,
         "sendStatusChangeEmail"
@@ -684,43 +717,6 @@ const BookingManagement: React.FC = () => {
     )}?text=${encodeURIComponent(message)}`;
 
     window.open(whatsappURL, "_blank");
-  };
-
-  const sendStatusEmail = async () => {
-    if (!selectedBooking || !emailConfirmationPending) return;
-
-    try {
-      setLoading(true);
-
-      const sendStatusChangeEmail = httpsCallable(
-        functions,
-        "sendStatusChangeEmail"
-      );
-
-      await sendStatusChangeEmail({
-        bookingId: selectedBooking.id,
-        newStatus: editForm.status,
-        customMessage: emailMessage,
-      });
-
-      setConfirmEmailOpen(false);
-      setEmailConfirmationPending(false);
-      setEmailMessage("");
-      setLoading(false);
-
-      // Show success message
-      alert("Status update email sent successfully!");
-    } catch (err) {
-      console.error("Error sending status update email:", err);
-      setLoading(false);
-      setError("Failed to send status update email. Please try again.");
-    }
-  };
-
-  const handleCancelEmail = () => {
-    setConfirmEmailOpen(false);
-    setEmailConfirmationPending(false);
-    setEmailMessage("");
   };
 
   // Utility Functions
@@ -1386,6 +1382,8 @@ const BookingManagement: React.FC = () => {
           selectedBooking?.roomTitle || "all",
           selectedBooking?.id
         )}
+        emailNote={emailNote}
+        setEmailNote={setEmailNote}
       />
 
       {/* Confirm Delete Dialog */}
@@ -1394,18 +1392,6 @@ const BookingManagement: React.FC = () => {
         onClose={() => setConfirmDeleteOpen(false)}
         onConfirmDelete={confirmDeleteBooking}
         selectedBooking={selectedBooking}
-      />
-
-      {/* Email Confirmation Dialog */}
-      <EmailConfirmationDialog
-        open={confirmEmailOpen}
-        onClose={handleCancelEmail}
-        onSendEmail={sendStatusEmail}
-        loading={loading}
-        selectedBooking={selectedBooking}
-        editForm={editForm}
-        emailMessage={emailMessage}
-        setEmailMessage={setEmailMessage}
       />
 
       {/* Unavailable Dates Dialog */}
