@@ -45,8 +45,8 @@ interface EditBookingDialogProps {
   /** Booked/unavailable dates for this booking's room, to highlight in red. */
   bookedDates?: Date[];
   /** Optional note folded into the status-update email sent on save. */
-  emailNote: string;
-  setEmailNote: (note: string) => void;
+  statusNote: string;
+  setStatusNote: (note: string) => void;
 }
 
 const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
@@ -57,8 +57,8 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
   setEditForm,
   handleSaveEdit,
   bookedDates = [],
-  emailNote,
-  setEmailNote,
+  statusNote,
+  setStatusNote,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -343,24 +343,19 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
                 </Grid>
               </Grid>
 
-              {/* Optional note for the status-update email, sent silently
-                  on save when Email is one of the selected methods above. */}
+              {/* Optional note folded into whichever status-update
+                  notification(s) fire on save, per the methods above. */}
               <Grid item xs={12}>
                 <TextField
-                  label="Note to include in status email (optional)"
-                  value={emailNote}
-                  onChange={(e) => setEmailNote(e.target.value)}
+                  label="Note to include in status update (optional)"
+                  value={statusNote}
+                  onChange={(e) => setStatusNote(e.target.value)}
                   fullWidth
                   multiline
                   rows={2}
                   size={isMobile ? "small" : "medium"}
                   placeholder="e.g. a reason for cancellation, or a personal welcome note"
-                  disabled={!includesEmail}
-                  helperText={
-                    includesEmail
-                      ? "Included in the automatic email if the status changes below."
-                      : "Select Email above to enable."
-                  }
+                  helperText="Included in the email and/or WhatsApp message sent if the status changes below."
                 />
               </Grid>
             </Grid>

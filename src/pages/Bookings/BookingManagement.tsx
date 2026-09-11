@@ -9,6 +9,7 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import {
   collection,
   getDocs,
+  getDoc,
   doc,
   updateDoc,
   deleteDoc,
@@ -146,10 +147,14 @@ const BookingManagement: React.FC = () => {
   const [calendarView, setCalendarView] = useState<View>(Views.MONTH);
   const [isCalendar, setisCalendar] = useState(false);
 
-  // Optional note folded into the status-update email, edited inline in
-  // the Edit Booking dialog (no separate confirmation popup - the email
-  // itself now sends silently on save, per contact method below).
-  const [emailNote, setEmailNote] = useState("");
+  // Optional note folded into the status-update email and/or WhatsApp
+  // message, edited inline in the Edit Booking dialog (no separate
+  // confirmation popup - notifications send on save, per contact method).
+  const [statusNote, setStatusNote] = useState("");
+
+  // Guest review link (settings/general), included in the "completed"
+  // status email/WhatsApp message. Empty until set in Room Management.
+  const [reviewUrl, setReviewUrl] = useState("");
 
   // Loading and Error States
   const [loading, setLoading] = useState(true);
@@ -159,6 +164,7 @@ const BookingManagement: React.FC = () => {
     fetchBookings();
     fetchUnavailableDates();
     fetchRooms();
+    fetchGeneralSettings();
   }, []);
 
   // Apply filters to bookings
@@ -318,6 +324,17 @@ const BookingManagement: React.FC = () => {
     }
   };
 
+  const fetchGeneralSettings = async () => {
+    try {
+      const snap = await getDoc(doc(db, "settings", "general"));
+      if (snap.exists()) {
+        setReviewUrl((snap.data() as { reviewUrl?: string }).reviewUrl || "");
+      }
+    } catch (err) {
+      console.error("Error fetching general settings:", err);
+    }
+  };
+
   // All booked/unavailable dates across every room, used to highlight the
   // main filter calendar so admins can see availability at a glance.
   const allBookedDates = useMemo(() => {
@@ -398,7 +415,7 @@ const BookingManagement: React.FC = () => {
       discount: booking.discount,
       totalPrice: booking.totalPrice,
     });
-    setEmailNote("");
+    setStatusNote("");
     setEditOpen(true);
   };
 
@@ -454,16 +471,21 @@ const BookingManagement: React.FC = () => {
           sendStatusChangeEmailSilently(
             selectedBooking.id,
             editForm.status,
-            emailNote
+            statusNote
           );
         }
         if (whatsappTab) {
-          sendStatusWhatsApp(selectedBooking, editForm.status, whatsappTab);
+          sendStatusWhatsApp(
+            selectedBooking,
+            editForm.status,
+            whatsappTab,
+            statusNote
+          );
         }
       } else {
         whatsappTab?.close();
       }
-      setEmailNote("");
+      setStatusNote("");
     } catch (err) {
       console.error("Error updating booking:", err);
       setError("Failed to update booking. Please try again.");
@@ -685,6 +707,44 @@ const BookingManagement: React.FC = () => {
     }
   };
 
+  // Same per-status wording as the status-change email (buildStatusEmailContent
+  // in the Cloud Function) - just plain text with WhatsApp's *bold* markers
+  // instead of HTML, so the two channels never say different things.
+  const getStatusWhatsAppIntro = (status: string, booking: Booking) => {
+    const name = booking.customerName || "Guest";
+    switch (status) {
+      case "pending":
+        return (
+          `Thank you for choosing Vintage Villa, ${name}! We've received ` +
+          "your booking request and it is currently *pending confirmation*. " +
+          "Our team will check availability and get back to you shortly."
+        );
+      case "confirmed":
+        return (
+          `Great news, ${name} - your booking at Vintage Villa has been ` +
+          "*confirmed*. We look forward to welcoming you!"
+        );
+      case "cancelled":
+        return (
+          `Dear ${name}, your booking at Vintage Villa has been ` +
+          "*cancelled*. We're sorry for any inconvenience this may cause - " +
+          "please don't hesitate to reach out if you have questions or " +
+          "would like to make a new reservation."
+        );
+      case "completed":
+        return (
+          `Dear ${name}, thank you for staying at Vintage Villa! We hope ` +
+          "you had a wonderful time and that everything met your " +
+          "expectations."
+        );
+      default:
+        return (
+          `Dear ${name}, your booking status has been updated to ` +
+          `*${(status || "").toUpperCase()}*.`
+        );
+    }
+  };
+
   // `targetWindow` is an already-open tab (see handleSaveBooking) to
   // navigate instead of opening a new one - calling window.open() after an
   // `await` gets silently blocked by the browser's popup blocker, since
@@ -692,7 +752,8 @@ const BookingManagement: React.FC = () => {
   const sendStatusWhatsApp = (
     booking: Booking,
     newStatus: string,
-    targetWindow?: Window | null
+    targetWindow?: Window | null,
+    customMessage?: string
   ) => {
     if (!booking.customerPhone) {
       setError("This booking has no phone number on file.");
@@ -706,32 +767,38 @@ const BookingManagement: React.FC = () => {
       dinner: false,
     };
 
+    const intro = getStatusWhatsAppIntro(newStatus, booking);
+    const reviewBlock =
+      newStatus === "completed" && reviewUrl
+        ? `\n\nWe'd love to hear about your stay - please consider leaving us a review:\n${reviewUrl}\n`
+        : "";
+    // Doesn't make sense once the stay is already over - a completed
+    // booking has nothing left to "change".
+    const followUpLine =
+      newStatus === "completed"
+        ? ""
+        : "If you need to make any changes to your reservation or have questions, please reply to this message or contact our front desk.\n\n";
+
     const message = `
-  *Vintage Villa - Booking Status Update*
+*Vintage Villa - Booking Update*
 
-  Dear ${booking.customerName},
+${intro}
+${customMessage ? `\n${customMessage}\n` : ""}
+*Booking Details:*
+Booking #: ${booking.id}
+Room: ${booking.roomTitle}
+Check-in: ${formatDate(booking.checkInDate)}
+Check-out: ${formatDate(booking.checkOutDate)}
+Guests: ${booking.headCount}
 
-  Your booking #${
-    booking.id
-  } at Vintage Villa has been updated to: *${(newStatus || "").toUpperCase()}*
+*Included Meals:*
+Breakfast: ${meals.breakfast ? "Yes" : "No"}
+Lunch: ${meals.lunch ? "Yes" : "No"}
+Dinner: ${meals.dinner ? "Yes" : "No"}
 
-  *Booking Details:*
-  Room: ${booking.roomTitle}
-  Check-in: ${formatDate(booking.checkInDate)}
-  Check-out: ${formatDate(booking.checkOutDate)}
-  Guests: ${booking.headCount}
-
-  *Included Meals:*
-  Breakfast: ${meals.breakfast ? "Yes" : "No"}
-  Lunch: ${meals.lunch ? "Yes" : "No"}
-  Dinner: ${meals.dinner ? "Yes" : "No"}
-
-  Total Amount: $${(booking.totalPrice ?? 0).toFixed(2)}
-
-  If you need to make any changes to your reservation or have questions, please reply to this message or contact our front desk.
-
-  Thank you for choosing Vintage Villa!
-  We look forward to welcoming you.
+Total Amount: $${(booking.totalPrice ?? 0).toFixed(2)}
+${reviewBlock}
+${followUpLine}Thank you for choosing Vintage Villa!
 `;
 
     const whatsappURL = `https://wa.me/${booking.customerPhone.replace(
@@ -1409,8 +1476,8 @@ const BookingManagement: React.FC = () => {
           selectedBooking?.roomTitle || "all",
           selectedBooking?.id
         )}
-        emailNote={emailNote}
-        setEmailNote={setEmailNote}
+        statusNote={statusNote}
+        setStatusNote={setStatusNote}
       />
 
       {/* Confirm Delete Dialog */}
