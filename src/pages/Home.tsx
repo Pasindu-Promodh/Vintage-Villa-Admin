@@ -65,8 +65,9 @@ function Home() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       setUser(auth.currentUser);
-    } catch (error) {
-      alert("Login failed");
+    } catch (error: any) {
+      console.error("Email login failed:", error);
+      alert(`Login failed: ${error?.code || error?.message || "Unknown error"}`);
     }
   };
 
@@ -76,8 +77,9 @@ function Home() {
     try {
       const result = await signInWithPopup(auth, provider);
       setUser(result.user);
-    } catch (error) {
-      alert("Google login failed");
+    } catch (error: any) {
+      console.error("Google login failed:", error);
+      alert(`Google login failed: ${error?.code || error?.message || "Unknown error"}`);
     }
   };
 
